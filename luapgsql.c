@@ -334,6 +334,70 @@ conn_escape(lua_State *L)
 }
 
 /*
+ * Asynchronous Notification Functions
+ */
+static int
+conn_notifies(lua_State *L)
+{
+	PGnotify **notify, *n;
+
+	n = PQnotifies(*(PGconn **)luaL_checkudata(L, 1, CONN_METATABLE));
+	if (n == NULL)
+		lua_pushnil(L);
+	else {
+		notify = lua_newuserdata(L, sizeof(PGnotify *));
+		*notify = n;
+		luaL_getmetatable(L, NOTIFY_METATABLE);
+		lua_setmetatable(L, -2);
+	}
+	return 1;
+}
+
+/*
+ * Miscellaneous Functions
+ */
+static int
+conn_consumeInput(lua_State *L)
+{
+	lua_pushboolean(L,
+	    PQconsumeInput(*(PGconn **)luaL_checkudata(L, 1, CONN_METATABLE)));
+	return 1;
+}
+
+static int
+conn_isBusy(lua_State *L)
+{
+	lua_pushboolean(L,
+	    PQisBusy(*(PGconn **)luaL_checkudata(L, 1, CONN_METATABLE)));
+	return 1;
+}
+
+static int
+conn_setnonblocking(lua_State *L)
+{
+	lua_pushinteger(L,
+	    PQsetnonblocking(*(PGconn **)luaL_checkudata(L, 1,
+	    CONN_METATABLE), lua_toboolean(L, 2)));
+	return 1;
+}
+
+static int
+conn_isnonblocking(lua_State *L)
+{
+	lua_pushboolean(L,
+	    PQisnonblocking(*(PGconn **)luaL_checkudata(L, 1, CONN_METATABLE)));
+	return 1;
+}
+
+static int
+conn_flush(lua_State *L)
+{
+	lua_pushinteger(L,
+	    PQflush(*(PGconn **)luaL_checkudata(L, 1, CONN_METATABLE)));
+	return 1;
+}
+
+/*
  * Result set functions
  */
 static int
@@ -429,6 +493,53 @@ res_clear(lua_State *L)
 	if (*r)  {
 		PQclear(*r);
 		*r = NULL;
+	}
+	return 0;
+}
+
+/*
+ * Notifies methods (objects returned by conn:notifies())
+ */
+
+static int
+notify_relname(lua_State *L)
+{
+	PGnotify **n;
+
+	n = luaL_checkudata(L, 1, NOTIFY_METATABLE);
+	lua_pushstring(L, (*n)->relname);
+	return 1;
+}
+
+static int
+notify_pid(lua_State *L)
+{
+	PGnotify **n;
+
+	n = luaL_checkudata(L, 1, NOTIFY_METATABLE);
+	lua_pushinteger(L, (*n)->be_pid);
+	return 1;
+}
+
+static int
+notify_extra(lua_State *L)
+{
+	PGnotify **n;
+
+	n = luaL_checkudata(L, 1, NOTIFY_METATABLE);
+	lua_pushstring(L, (*n)->extra);
+	return 1;
+}
+
+static int
+notify_clear(lua_State *L)
+{
+	PGnotify **n;
+
+	n = luaL_checkudata(L, 1, NOTIFY_METATABLE);
+	if (*n)  {
+		PQfreemem(*n);
+		*n = NULL;
 	}
 	return 0;
 }
@@ -543,6 +654,16 @@ luaopen_pgsql(lua_State *L)
 		{ "escape", conn_escape },
 		{ "exec", conn_exec },
 
+		/* Asynchronous Notifications Funcions */
+		{ "notifies", conn_notifies },
+
+		/* Misecellaneos Functions */
+		{ "consumeInput", conn_consumeInput },
+		{ "isBusy", conn_isBusy },
+		{ "setnonblocking", conn_setnonblocking },
+		{ "isnonblocking", conn_isnonblocking },
+		{ "flush", conn_flush },
+
 		{ NULL, NULL }
 	};
 	struct luaL_reg res_methods[] = {
@@ -555,6 +676,12 @@ luaopen_pgsql(lua_State *L)
 		{ "fnumber", res_fnumber },
 		{ "nfields", res_nfields },
 		{ "status", res_status },
+		{ NULL, NULL }
+	};
+	struct luaL_reg notify_methods[] = {
+		{ "relname", notify_relname },
+		{ "pid", notify_pid },
+		{ "extra", notify_extra },
 		{ NULL, NULL }
 	};
 
@@ -581,6 +708,23 @@ luaopen_pgsql(lua_State *L)
 
 		lua_pushliteral(L, "__gc");
 		lua_pushcfunction(L, res_clear);
+		lua_settable(L, -3);
+
+		lua_pushliteral(L, "__index");
+		lua_pushvalue(L, -2);
+		lua_settable(L, -3);
+
+		lua_pushliteral(L, "__metatable");
+		lua_pushliteral(L, "must not access this metatable");
+		lua_settable(L, -3);
+	}
+	lua_pop(L, 1);
+
+	if (luaL_newmetatable(L, NOTIFY_METATABLE)) {
+		luaL_register(L, NULL, notify_methods);
+
+		lua_pushliteral(L, "__gc");
+		lua_pushcfunction(L, notify_clear);
 		lua_settable(L, -3);
 
 		lua_pushliteral(L, "__index");

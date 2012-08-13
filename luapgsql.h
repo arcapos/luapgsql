@@ -30,7 +30,8 @@
 #ifndef __LUAPGSQL_H__
 #define __LUAPGSQL_H__
 
-#define CONN_METATABLE	"pgsql connection methods"
-#define RES_METATABLE	"pgsql result methods"
+#define CONN_METATABLE		"pgsql connection methods"
+#define RES_METATABLE		"pgsql result methods"
+#define NOTIFY_METATABLE	"pgsql asychronous notification methods"
 
 #endif /* __LUAPGSQL_H__ */
