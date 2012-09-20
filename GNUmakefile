@@ -2,7 +2,7 @@ SRCS=		luapgsql.c
 LIB=		pgsql
 
 CFLAGS+=	-O3 -Wall -fPIC -I/usr/include -I/usr/include/lua5.1 \
-		-I/usr/include/postgresql
+		-I/usr/include/postgresql -D_GNU_SOURCE
 LDADD+=		-L/usr/lib -lpq -lbsd
 
 LIBDIR=		/usr/lib/lua/5.1

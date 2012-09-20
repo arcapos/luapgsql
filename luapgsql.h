@@ -33,5 +33,11 @@
 #define CONN_METATABLE		"pgsql connection methods"
 #define RES_METATABLE		"pgsql result methods"
 #define NOTIFY_METATABLE	"pgsql asychronous notification methods"
+#define LO_METATABLE		"pgsql large object methods"
+
+typedef struct largeObject {
+	PGconn	*conn;
+	int	 fd;
+} largeObject;
 
 #endif /* __LUAPGSQL_H__ */
