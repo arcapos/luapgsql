@@ -182,9 +182,8 @@ conn_finish(lua_State *L)
 		if (lua_isnil(L, -1)) {
 			PQfinish(*conn);
 			*conn = NULL;
-		} else {
+		} else
 			lua_pop(L, 1);
-		}
 	}
 	return 0;
 }
