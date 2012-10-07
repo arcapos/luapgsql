@@ -12,5 +12,3 @@ print(conn:errorMessage())
 res = conn:exec('select name from syt_pos')
 print(res:ntuples())
 print(conn:errorMessage())
-conn:finish()
-
