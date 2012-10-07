@@ -156,8 +156,35 @@ conn_finish(lua_State *L)
 
 	conn = luaL_checkudata(L, 1, CONN_METATABLE);
 	if (*conn) {
-		PQfinish(*conn);
-		*conn = NULL;
+		/*
+		 * Check in the registry if a value has been stored at
+		 * index '*conn'; if a value is found, don't close the
+		 * connection.
+		 * This mechanism can be used when the PostgreSQL connection
+		 * object is provided to Lua from a C program that wants to
+		 * ensure the connections stays open, even when the Lua
+		 * program has terminated.
+		 * To prevent the closing of the connection, use the following
+		 * code to set a value in the registry at index '*conn' just
+		 * before handing the connection object to Lua:
+		 *
+		 * PGconn *conn, **data;
+		 *
+		 * conn = PQconnectdb(...);
+		 * data = lua_newuserdata(L, sizeof(PGconn *));
+		 * *data = conn;
+		 * lua_pushlightuserdata(L, *data);
+		 * lua_pushboolean(L, 1);
+		 * lua_settable(L, LUA_REGISTRYINDEX);
+		 */
+		lua_pushlightuserdata(L, *conn);
+		lua_gettable(L, LUA_REGISTRYINDEX);
+		if (lua_isnil(L, -1)) {
+			PQfinish(*conn);
+			*conn = NULL;
+		} else {
+			lua_pop(L, 1);
+		}
 	}
 	return 0;
 }
@@ -1543,7 +1570,7 @@ pgsql_set_info(lua_State *L)
 	lua_pushliteral(L, "PostgreSQL binding for Lua");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "pgsql 1.1.0");
+	lua_pushliteral(L, "pgsql 1.2.0");
 	lua_settable(L, -3);
 }
 
@@ -1691,11 +1718,11 @@ luaopen_pgsql(lua_State *L)
 
 	if (luaL_newmetatable(L, CONN_METATABLE)) {
 		luaL_register(L, NULL, conn_methods);
-#if 0
+
 		lua_pushliteral(L, "__gc");
 		lua_pushcfunction(L, conn_finish);
 		lua_settable(L, -3);
-#endif
+
 		lua_pushliteral(L, "__index");
 		lua_pushvalue(L, -2);
 		lua_settable(L, -3);
