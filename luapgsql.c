@@ -91,12 +91,16 @@ PQescape(PGconn *conn, char *dst, const char *from, size_t size)
 static int
 pgsql_connectdb(lua_State *L)
 {
-	PGconn **data;
+	PGconn *conn, **data;
 
-	data = (PGconn **)lua_newuserdata(L, sizeof(PGconn *));
-	*data = PQconnectdb(luaL_checkstring(L, -2));
-	luaL_getmetatable(L, CONN_METATABLE);
-	lua_setmetatable(L, -2);
+	conn = PQconnectdb(luaL_checkstring(L, -1));
+	if (conn != NULL) {
+		data = (PGconn **)lua_newuserdata(L, sizeof(PGconn *));
+		*data = conn;
+		luaL_getmetatable(L, CONN_METATABLE);
+		lua_setmetatable(L, -2);
+	} else
+		lua_pushnil(L);
 	return 1;
 }
 
