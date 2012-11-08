@@ -1280,7 +1280,7 @@ res_getvalue(lua_State *L)
 static int
 res_getisnull(lua_State *L)
 {
-	lua_pushinteger(L,
+	lua_pushboolean(L,
 	    PQgetisnull(*(PGresult **)luaL_checkudata(L, 1, RES_METATABLE),
 	    luaL_checkint(L, 2) - 1, luaL_checkint(L, 3) - 1));
 	return 1;
