@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009 - 2012, Micro Systems Marc Balmer, CH-5073 Gipf-Oberfrick
+ * Copyright (c) 2009 - 2013, Micro Systems Marc Balmer, CH-5073 Gipf-Oberfrick
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -12,7 +12,7 @@
  *     * Neither the name of Micro Systems Marc Balmer nor the
  *       names of its contributors may be used to endorse or promote products
  *       derived from this software without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -442,8 +442,7 @@ conn_execParams(lua_State *L)
 	lua_setmetatable(L, -2);
 	if (nParams) {
 		for (n = 0; n < nParams; n++)
-			if (paramValues[n] != NULL)
-				free((void *)paramValues[n]);
+			free((void *)paramValues[n]);
 		free(paramTypes);
 		free(paramValues);
 	}
@@ -612,7 +611,7 @@ conn_escapeLiteral(lua_State *L)
 	char *p;
 	PGconn **d;
 
-	d = luaL_checkudata(L, 1, CONN_METATABLE);	
+	d = luaL_checkudata(L, 1, CONN_METATABLE);
 	s = lua_tostring(L, 2);
 	p = PQescapeLiteral(*d, s, strlen(s));
 	lua_pushstring(L, p);
@@ -627,7 +626,7 @@ conn_escapeIdentifier(lua_State *L)
 	char *p;
 	PGconn **d;
 
-	d = luaL_checkudata(L, 1, CONN_METATABLE);	
+	d = luaL_checkudata(L, 1, CONN_METATABLE);
 	s = lua_tostring(L, 2);
 	p = PQescapeIdentifier(*d, s, strlen(s));
 	lua_pushstring(L, p);
@@ -807,7 +806,8 @@ conn_sendQueryPrepared(lua_State *L)
 	} else
 		paramValues = NULL;
 	lua_pushinteger(L,
-	    PQsendQueryPrepared(*(PGconn **)luaL_checkudata(L, 1, CONN_METATABLE),
+	    PQsendQueryPrepared(*(PGconn **)luaL_checkudata(L, 1,
+	    CONN_METATABLE),
 	    luaL_checkstring(L, 2), nParams, (const char * const*)paramValues,
 	    NULL, NULL, 0));
 	if (nParams) {
@@ -864,7 +864,7 @@ conn_cancel(lua_State *L)
 	char errbuf[256];
 	int res = 1;
 
-	d = luaL_checkudata(L, 1, CONN_METATABLE);	
+	d = luaL_checkudata(L, 1, CONN_METATABLE);
 	cancel = PQgetCancel(*d);
 	if (cancel != NULL) {
 		res = PQcancel(cancel, errbuf, sizeof errbuf);
@@ -1549,11 +1549,13 @@ static struct constant pgsql_constant[] = {
 	{ "PQERRORS_DEFAULT",		PQERRORS_DEFAULT },
 	{ "PQERRORS_VERBOSE",		PQERRORS_VERBOSE },
 
+#if PG_VERSION_NUM >= 90100
 	/* PQping codes */
 	{ "PQPING_OK",			PQPING_OK },
 	{ "PQPING_REJECT",		PQPING_REJECT },
 	{ "PQPING_NO_RESPONSE",		PQPING_NO_RESPONSE },
 	{ "PQPING_NO_ATTEMPT",		PQPING_NO_ATTEMPT },
+#endif
 
 	/* Large objects */
 	{ "INV_READ",			INV_READ },
@@ -1665,7 +1667,7 @@ luaopen_pgsql(lua_State *L)
 		/* Notice processing */
 		{ "setNoticeReceiver", conn_setNoticeReceiver },
 		{ "setNoticeProcessor", conn_setNoticeProcessor },
-		
+
 		/* Large Objects */
 		{ "lo_create", conn_lo_create },
 		{ "lo_import", conn_lo_import },
