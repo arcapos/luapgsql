@@ -12,7 +12,7 @@ LOCALBASE=	/usr/local
 
 NOLINT=	1
 CFLAGS+=	-I${LOCALBASE}/include -I${LOCALBASE}/include/postgresql/server
-LDADD+=		-L${LOCALBASE}/lib -lpq
+LDADD+=		-L${LOCALBASE}/lib -lpq -lm
 
 LIBDIR=		${LOCALBASE}/lib/lua/5.1
 
