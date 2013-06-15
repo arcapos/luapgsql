@@ -381,67 +381,87 @@ conn_exec(lua_State *L)
 }
 
 static int
+get_sql_params(lua_State *L, int t, Oid *paramTypes, char **paramValues)
+{
+	int n = 0;
+
+	switch (lua_type(L, t)) {
+	case LUA_TBOOLEAN:
+		if (paramTypes != NULL)
+			paramTypes[n] = BOOLOID;
+		if (paramValues != NULL) {
+			if (lua_toboolean(L, t))
+				paramValues[n++] = strdup("true");
+			else
+				paramValues[n++] = strdup("false");
+		}
+		n = 1;
+		break;
+	case LUA_TNUMBER:
+		if (paramTypes != NULL)
+			paramTypes[n] = NUMERICOID;
+		if (paramValues != NULL)
+			asprintf(&paramValues[n++], "%f", lua_tonumber(L, t));
+		n = 1;
+		break;
+	case LUA_TSTRING:
+		if (paramTypes != NULL)
+			paramTypes[n] = TEXTOID;
+		if (paramValues != NULL)
+			paramValues[n++] = strdup(lua_tostring(L, t));
+		n = 1;
+		break;
+	case LUA_TNIL:
+		if (paramValues != NULL)
+			paramValues[n++] = NULL;
+		n = 1;
+		break;
+	case LUA_TTABLE:
+		lua_pushnil(L);
+		while (lua_next(L, t) != 0) {
+			n += get_sql_params(L, -1, paramTypes, paramValues);
+			lua_pop(L, 1);
+		}
+		break;
+	default:
+		return luaL_argerror(L, 3 + n, "unsupported type");
+	}
+	return n;
+}
+
+static int
 conn_execParams(lua_State *L)
 {
 	PGresult **res;
 	Oid *paramTypes;
 	char **paramValues;
-	int n, nParams;
+	int n, t, nParams, sqlParams;
 
 	nParams = lua_gettop(L) - 2;	/* subtract connection and command */
 	if (nParams < 0)
 		nParams = 0;
-	if (nParams) {
-		paramTypes = calloc(nParams, sizeof(Oid));
-		paramValues = calloc(nParams, sizeof(char *));
 
-		for (n = 0; n < nParams; n++) {
-			switch (lua_type(L, 3 + n)) {
-			case LUA_TBOOLEAN:
-				paramTypes[n] = BOOLOID;
-				if (lua_toboolean(L, 3 + n))
-					paramValues[n] = strdup("true");
-				else
-					paramValues[n] = strdup("false");
-				break;
-			case LUA_TNUMBER:
-				paramTypes[n] = NUMERICOID;
-				asprintf(&paramValues[n], "%f",
-				    lua_tonumber(L, 3 + n));
-				break;
-			case LUA_TSTRING:
-				paramTypes[n] = TEXTOID;
-				paramValues[n] = strdup(lua_tostring(L, 3 + n));
-				break;
-			case LUA_TNIL:
-				paramValues[n] = NULL;
-				break;
-			case LUA_TFUNCTION:
-			case LUA_TTABLE:
-			case LUA_TUSERDATA:
-			case LUA_TTHREAD:
-			case LUA_TLIGHTUSERDATA:
-				for (nParams = 0; nParams < n; nParams++)
-					if (paramValues[nParams] != NULL)
-						free(paramValues[nParams]);
-				free(paramValues);
-				free(paramTypes);
-				return luaL_argerror(L, 3 + n,
-				    "unsupported type");
-			}
-		}
+	for (n = 0, sqlParams = 0; n < nParams; n++)
+		sqlParams += get_sql_params(L, 3 + n, NULL, NULL);
+
+	if (sqlParams) {
+		paramTypes = calloc(sqlParams, sizeof(Oid));
+		paramValues = calloc(sqlParams, sizeof(char *));
+
+		for (n = 0; n < nParams; n++)
+			get_sql_params(L, 3 + n, paramTypes, paramValues);
 	} else {
 		paramTypes = NULL;
 		paramValues = NULL;
 	}
 	res = lua_newuserdata(L, sizeof(PGresult *));
 	*res = PQexecParams(*(PGconn **)luaL_checkudata(L, 1, CONN_METATABLE),
-	    luaL_checkstring(L, 2), nParams, paramTypes,
+	    luaL_checkstring(L, 2), sqlParams, paramTypes,
 	    (const char * const*)paramValues, NULL, NULL, 0);
 	luaL_getmetatable(L, RES_METATABLE);
 	lua_setmetatable(L, -2);
-	if (nParams) {
-		for (n = 0; n < nParams; n++)
+	if (sqlParams) {
+		for (n = 0; n < sqlParams; n++)
 			free((void *)paramValues[n]);
 		free(paramTypes);
 		free(paramValues);
@@ -454,47 +474,29 @@ conn_prepare(lua_State *L)
 {
 	PGresult **res;
 	Oid *paramTypes;
-	int n, nParams;
+	int n, nParams, sqlParams;
 
 	nParams = lua_gettop(L) - 3;	/* subtract connection, name, command */
 	if (nParams < 0)
 		nParams = 0;
-	if (nParams) {
-		paramTypes = calloc(nParams, sizeof(Oid));
 
-		for (n = 0; n < nParams; n++) {
-			switch (lua_type(L, 4 + n)) {
-			case LUA_TBOOLEAN:
-				paramTypes[n] = BOOLOID;
-				break;
-			case LUA_TNUMBER:
-				paramTypes[n] = NUMERICOID;
-				break;
-			case LUA_TSTRING:
-				paramTypes[n] = TEXTOID;
-				break;
-			case LUA_TNIL:
-				paramTypes[n] = 0;
-				break;
-			case LUA_TFUNCTION:
-			case LUA_TTABLE:
-			case LUA_TUSERDATA:
-			case LUA_TTHREAD:
-			case LUA_TLIGHTUSERDATA:
-				free(paramTypes);
-				return luaL_argerror(L, 4 + n,
-				    "unsupported type");
-			}
-		}
+	for (n = 0, sqlParams = 0; n < nParams; n++)
+		sqlParams += get_sql_params(L, 4 + n, NULL, NULL);
+
+	if (sqlParams) {
+		paramTypes = calloc(sqlParams, sizeof(Oid));
+
+		for (n = 0; n < nParams; n++)
+			get_sql_params(L, 4 + n, paramTypes, NULL);
 	} else
 		paramTypes = NULL;
 	res = lua_newuserdata(L, sizeof(PGresult *));
 	*res = PQprepare(*(PGconn **)luaL_checkudata(L, 1, CONN_METATABLE),
-	    luaL_checkstring(L, 2), luaL_checkstring(L, 3), nParams,
+	    luaL_checkstring(L, 2), luaL_checkstring(L, 3), sqlParams,
 	    paramTypes);
 	luaL_getmetatable(L, RES_METATABLE);
 	lua_setmetatable(L, -2);
-	if (nParams)
+	if (sqlParams)
 		free(paramTypes);
 	return 1;
 }
@@ -504,55 +506,30 @@ conn_execPrepared(lua_State *L)
 {
 	PGresult **res;
 	char **paramValues;
-	int n, nParams;
+	int n, nParams, sqlParams;
 
 	nParams = lua_gettop(L) - 2;	/* subtract connection and name */
 	if (nParams < 0)
 		nParams = 0;
-	if (nParams) {
-		paramValues = calloc(nParams, sizeof(char *));
 
-		for (n = 0; n < nParams; n++) {
-			switch (lua_type(L, 3 + n)) {
-			case LUA_TBOOLEAN:
-				if (lua_toboolean(L, 3 + n))
-					paramValues[n] = strdup("true");
-				else
-					paramValues[n] = strdup("false");
-				break;
-			case LUA_TNUMBER:
-				asprintf(&paramValues[n], "%f",
-				    lua_tonumber(L, 3 + n));
-				break;
-			case LUA_TSTRING:
-				paramValues[n] = strdup(lua_tostring(L, 3 + n));
-				break;
-			case LUA_TNIL:
-				paramValues[n] = NULL;
-				break;
-			case LUA_TFUNCTION:
-			case LUA_TTABLE:
-			case LUA_TUSERDATA:
-			case LUA_TTHREAD:
-			case LUA_TLIGHTUSERDATA:
-				for (nParams = 0; nParams < n; nParams++)
-					if (paramValues[nParams] != NULL)
-						free(paramValues[nParams]);
-				free(paramValues);
-				return luaL_argerror(L, 3 + n,
-				    "unsupported type");
-			}
-		}
+	for (n = 0, sqlParams = 0; n < nParams; n++)
+		sqlParams += get_sql_params(L, 3 + n, NULL, NULL);
+
+	if (sqlParams) {
+		paramValues = calloc(sqlParams, sizeof(char *));
+
+		for (n = 0; n < nParams; n++)
+			get_sql_params(L, 3 + n, NULL, paramValues);
 	} else
 		paramValues = NULL;
 	res = lua_newuserdata(L, sizeof(PGresult *));
 	*res = PQexecPrepared(*(PGconn **)luaL_checkudata(L, 1, CONN_METATABLE),
-	    luaL_checkstring(L, 2), nParams, (const char * const*)paramValues,
+	    luaL_checkstring(L, 2), sqlParams, (const char * const*)paramValues,
 	    NULL, NULL, 0);
 	luaL_getmetatable(L, RES_METATABLE);
 	lua_setmetatable(L, -2);
-	if (nParams) {
-		for (n = 0; n < nParams; n++)
+	if (sqlParams) {
+		for (n = 0; n < sqlParams; n++)
 			if (paramValues[n] != NULL)
 				free((void *)paramValues[n]);
 		free(paramValues);
@@ -651,60 +628,31 @@ conn_sendQueryParams(lua_State *L)
 {
 	Oid *paramTypes;
 	char **paramValues;
-	int n, nParams;
+	int n, nParams, sqlParams;
 
 	nParams = lua_gettop(L) - 2;	/* subtract connection and command */
 	if (nParams < 0)
 		nParams = 0;
-	if (nParams) {
-		paramTypes = calloc(nParams, sizeof(Oid));
-		paramValues = calloc(nParams, sizeof(char *));
 
-		for (n = 0; n < nParams; n++) {
-			switch (lua_type(L, 3 + n)) {
-			case LUA_TBOOLEAN:
-				paramTypes[n] = BOOLOID;
-				if (lua_toboolean(L, 3 + n))
-					paramValues[n] = strdup("true");
-				else
-					paramValues[n] = strdup("false");
-				break;
-			case LUA_TNUMBER:
-				paramTypes[n] = NUMERICOID;
-				asprintf(&paramValues[n], "%f",
-				    lua_tonumber(L, 3 + n));
-				break;
-			case LUA_TSTRING:
-				paramTypes[n] = TEXTOID;
-				paramValues[n] = strdup(lua_tostring(L, 3 + n));
-				break;
-			case LUA_TNIL:
-				paramValues[n] = NULL;
-				break;
-			case LUA_TFUNCTION:
-			case LUA_TTABLE:
-			case LUA_TUSERDATA:
-			case LUA_TTHREAD:
-			case LUA_TLIGHTUSERDATA:
-				for (nParams = 0; nParams < n; nParams++)
-					if (paramValues[nParams] != NULL)
-						free(paramValues[nParams]);
-				free(paramValues);
-				free(paramTypes);
-				return luaL_argerror(L, 3 + n,
-				    "unsupported type");
-			}
-		}
+	for (n = 0, sqlParams = 0; n < nParams; n++)
+		sqlParams += get_sql_params(L, 3 + n, NULL, NULL);
+
+	if (sqlParams) {
+		paramTypes = calloc(sqlParams, sizeof(Oid));
+		paramValues = calloc(sqlParams, sizeof(char *));
+
+		for (n = 0; n < nParams; n++)
+			get_sql_params(L, 3 + n, paramTypes, paramValues);
 	} else {
 		paramTypes = NULL;
 		paramValues = NULL;
 	}
 	lua_pushinteger(L,
 	    PQsendQueryParams(*(PGconn **)luaL_checkudata(L, 1, CONN_METATABLE),
-	    luaL_checkstring(L, 2), nParams, paramTypes,
+	    luaL_checkstring(L, 2), sqlParams, paramTypes,
 	    (const char * const*)paramValues, NULL, NULL, 0));
-	if (nParams) {
-		for (n = 0; n < nParams; n++)
+	if (sqlParams) {
+		for (n = 0; n < sqlParams; n++)
 			if (paramValues[n] != NULL)
 				free((void *)paramValues[n]);
 		free(paramTypes);
@@ -717,45 +665,27 @@ static int
 conn_sendPrepare(lua_State *L)
 {
 	Oid *paramTypes;
-	int n, nParams;
+	int n, nParams, sqlParams;
 
 	nParams = lua_gettop(L) - 3;	/* subtract connection, name, command */
 	if (nParams < 0)
 		nParams = 0;
-	if (nParams) {
-		paramTypes = calloc(nParams, sizeof(Oid));
 
-		for (n = 0; n < nParams; n++) {
-			switch (lua_type(L, 4 + n)) {
-			case LUA_TBOOLEAN:
-				paramTypes[n] = BOOLOID;
-				break;
-			case LUA_TNUMBER:
-				paramTypes[n] = NUMERICOID;
-				break;
-			case LUA_TSTRING:
-				paramTypes[n] = TEXTOID;
-				break;
-			case LUA_TNIL:
-				paramTypes[n] = 0;
-				break;
-			case LUA_TFUNCTION:
-			case LUA_TTABLE:
-			case LUA_TUSERDATA:
-			case LUA_TTHREAD:
-			case LUA_TLIGHTUSERDATA:
-				free(paramTypes);
-				return luaL_argerror(L, 4 + n,
-				    "unsupported type");
-			}
-		}
+	for (n = 0, sqlParams = 0; n < nParams; n++)
+		sqlParams += get_sql_params(L, 4 + n, NULL, NULL);
+
+	if (sqlParams) {
+		paramTypes = calloc(sqlParams, sizeof(Oid));
+
+		for (n = 0; n < nParams; n++)
+			get_sql_params(L, 4 + n, paramTypes, NULL);
 	} else
 		paramTypes = NULL;
 	lua_pushinteger(L,
 	    PQsendPrepare(*(PGconn **)luaL_checkudata(L, 1, CONN_METATABLE),
-	    luaL_checkstring(L, 2), luaL_checkstring(L, 3), nParams,
+	    luaL_checkstring(L, 2), luaL_checkstring(L, 3), sqlParams,
 	    paramTypes));
-	if (nParams)
+	if (sqlParams)
 		free(paramTypes);
 	return 1;
 }
@@ -764,45 +694,20 @@ static int
 conn_sendQueryPrepared(lua_State *L)
 {
 	char **paramValues;
-	int n, nParams;
+	int n, nParams, sqlParams;
 
 	nParams = lua_gettop(L) - 2;	/* subtract connection and name */
 	if (nParams < 0)
 		nParams = 0;
-	if (nParams) {
-		paramValues = calloc(nParams, sizeof(char *));
 
-		for (n = 0; n < nParams; n++) {
-			switch (lua_type(L, 3 + n)) {
-			case LUA_TBOOLEAN:
-				if (lua_toboolean(L, 3 + n))
-					paramValues[n] = strdup("true");
-				else
-					paramValues[n] = strdup("false");
-				break;
-			case LUA_TNUMBER:
-				asprintf(&paramValues[n], "%f",
-				    lua_tonumber(L, 3 + n));
-				break;
-			case LUA_TSTRING:
-				paramValues[n] = strdup(lua_tostring(L, 3 + n));
-				break;
-			case LUA_TNIL:
-				paramValues[n] = NULL;
-				break;
-			case LUA_TFUNCTION:
-			case LUA_TTABLE:
-			case LUA_TUSERDATA:
-			case LUA_TTHREAD:
-			case LUA_TLIGHTUSERDATA:
-				for (nParams = 0; nParams < n; nParams++)
-					if (paramValues[nParams] != NULL)
-						free(paramValues[nParams]);
-				free(paramValues);
-				return luaL_argerror(L, 3 + n,
-				    "unsupported type");
-			}
-		}
+	for (n = 0, sqlParams = 0; n < nParams; n++)
+		sqlParams += get_sql_params(L, 3 + n, NULL, NULL);
+
+	if (sqlParams) {
+		paramValues = calloc(sqlParams, sizeof(char *));
+
+		for (n = 0; n < nParams; n++)
+			get_sql_params(L, 3 + n, NULL, paramValues);
 	} else
 		paramValues = NULL;
 	lua_pushinteger(L,
@@ -1571,14 +1476,14 @@ static void
 pgsql_set_info(lua_State *L)
 {
 	lua_pushliteral(L, "_COPYRIGHT");
-	lua_pushliteral(L, "Copyright (C) 2011, 2012 by "
+	lua_pushliteral(L, "Copyright (C) 2011 - 2013 by "
 	    "micro systems marc balmer");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_DESCRIPTION");
 	lua_pushliteral(L, "PostgreSQL binding for Lua");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "pgsql 1.2.0");
+	lua_pushliteral(L, "pgsql 1.2.1");
 	lua_settable(L, -3);
 }
 
