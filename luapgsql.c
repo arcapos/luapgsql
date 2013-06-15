@@ -382,21 +382,20 @@ conn_exec(lua_State *L)
 }
 
 static int
-get_sql_params(lua_State *L, int t, int p, Oid *paramTypes, char **paramValues)
+get_sql_params(lua_State *L, int t, int n, Oid *paramTypes, char **paramValues)
 {
 	double v, i;
-	int k, n;
+	int k;
 
-	n = p;
 	switch (lua_type(L, t)) {
 	case LUA_TBOOLEAN:
 		if (paramTypes != NULL)
 			paramTypes[n] = BOOLOID;
 		if (paramValues != NULL) {
 			if (lua_toboolean(L, t))
-				paramValues[n++] = strdup("true");
+				paramValues[n] = strdup("true");
 			else
-				paramValues[n++] = strdup("false");
+				paramValues[n] = strdup("false");
 		}
 		n = 1;
 		break;
@@ -406,12 +405,12 @@ get_sql_params(lua_State *L, int t, int p, Oid *paramTypes, char **paramValues)
 			if (paramTypes != NULL)
 				paramTypes[n] = INT4OID;
 			if (paramValues != NULL)
-				asprintf(&paramValues[n++], "%.f", v);
+				asprintf(&paramValues[n], "%.f", v);
 		} else {
 			if (paramTypes != NULL)
 				paramTypes[n] = NUMERICOID;
 			if (paramValues != NULL)
-				asprintf(&paramValues[n++], "%f", v);
+				asprintf(&paramValues[n], "%f", v);
 		}
 		n = 1;
 		break;
@@ -419,12 +418,12 @@ get_sql_params(lua_State *L, int t, int p, Oid *paramTypes, char **paramValues)
 		if (paramTypes != NULL)
 			paramTypes[n] = TEXTOID;
 		if (paramValues != NULL)
-			paramValues[n++] = strdup(lua_tostring(L, t));
+			paramValues[n] = strdup(lua_tostring(L, t));
 		n = 1;
 		break;
 	case LUA_TNIL:
 		if (paramValues != NULL)
-			paramValues[n++] = NULL;
+			paramValues[n] = NULL;
 		n = 1;
 		break;
 	case LUA_TTABLE:
@@ -457,14 +456,15 @@ conn_execParams(lua_State *L)
 		nParams = 0;
 
 	for (n = 0, sqlParams = 0; n < nParams; n++)
-		sqlParams += get_sql_params(L, 3 + n, 0, NULL, NULL);
+		sqlParams += get_sql_params(L, 3 + n, sqlParams, NULL, NULL);
 
 	if (sqlParams) {
 		paramTypes = calloc(sqlParams, sizeof(Oid));
 		paramValues = calloc(sqlParams, sizeof(char *));
 
-		for (n = 0; n < nParams; n++)
-			get_sql_params(L, 3 + n, 0, paramTypes, paramValues);
+		for (n = 0, sqlParams = 0; n < nParams; n++)
+			sqlParams += get_sql_params(L, 3 + n, sqlParams,
+			    paramTypes, paramValues);
 	} else {
 		paramTypes = NULL;
 		paramValues = NULL;
@@ -496,13 +496,14 @@ conn_prepare(lua_State *L)
 		nParams = 0;
 
 	for (n = 0, sqlParams = 0; n < nParams; n++)
-		sqlParams += get_sql_params(L, 4 + n, 0, NULL, NULL);
+		sqlParams += get_sql_params(L, 4 + n, sqlParams, NULL, NULL);
 
 	if (sqlParams) {
 		paramTypes = calloc(sqlParams, sizeof(Oid));
 
-		for (n = 0; n < nParams; n++)
-			get_sql_params(L, 4 + n, 0, paramTypes, NULL);
+		for (n = 0, sqlParams = 0; n < nParams; n++)
+			sqlParams += get_sql_params(L, 4 + n, sqlParams,
+			    paramTypes, NULL);
 	} else
 		paramTypes = NULL;
 	res = lua_newuserdata(L, sizeof(PGresult *));
@@ -528,13 +529,14 @@ conn_execPrepared(lua_State *L)
 		nParams = 0;
 
 	for (n = 0, sqlParams = 0; n < nParams; n++)
-		sqlParams += get_sql_params(L, 3 + n, 0, NULL, NULL);
+		sqlParams += get_sql_params(L, 3 + n, sqlParams, NULL, NULL);
 
 	if (sqlParams) {
 		paramValues = calloc(sqlParams, sizeof(char *));
 
-		for (n = 0; n < nParams; n++)
-			get_sql_params(L, 3 + n, 0, NULL, paramValues);
+		for (n = 0, sqlParams = 0; n < nParams; n++)
+			sqlParams += get_sql_params(L, 3 + n, sqlParams, NULL,
+			    paramValues);
 	} else
 		paramValues = NULL;
 	res = lua_newuserdata(L, sizeof(PGresult *));
@@ -656,8 +658,9 @@ conn_sendQueryParams(lua_State *L)
 		paramTypes = calloc(sqlParams, sizeof(Oid));
 		paramValues = calloc(sqlParams, sizeof(char *));
 
-		for (n = 0; n < nParams; n++)
-			get_sql_params(L, 3 + n, 0, paramTypes, paramValues);
+		for (n = 0, sqlParams = 0; n < nParams; n++)
+			sqlParams += get_sql_params(L, 3 + n, sqlParams,
+			    paramTypes, paramValues);
 	} else {
 		paramTypes = NULL;
 		paramValues = NULL;
@@ -692,8 +695,9 @@ conn_sendPrepare(lua_State *L)
 	if (sqlParams) {
 		paramTypes = calloc(sqlParams, sizeof(Oid));
 
-		for (n = 0; n < nParams; n++)
-			get_sql_params(L, 4 + n, 0, paramTypes, NULL);
+		for (n = 0, sqlParams = 0; n < nParams; n++)
+			sqlParams += get_sql_params(L, 4 + n, sqlParams,
+			    paramTypes, NULL);
 	} else
 		paramTypes = NULL;
 	lua_pushinteger(L,
@@ -721,8 +725,9 @@ conn_sendQueryPrepared(lua_State *L)
 	if (sqlParams) {
 		paramValues = calloc(sqlParams, sizeof(char *));
 
-		for (n = 0; n < nParams; n++)
-			get_sql_params(L, 3 + n, 0, NULL, paramValues);
+		for (n = 0, sqlParams = 0; n < nParams; n++)
+			sqlParams += get_sql_params(L, 3 + n, sqlParams, NULL,
+			    paramValues);
 	} else
 		paramValues = NULL;
 	lua_pushinteger(L,
