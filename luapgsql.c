@@ -383,7 +383,7 @@ conn_exec(lua_State *L)
 static int
 get_sql_params(lua_State *L, int t, int p, Oid *paramTypes, char **paramValues)
 {
-	int n;
+	int k, n;
 
 	n = p;
 	switch (lua_type(L, t)) {
@@ -418,11 +418,15 @@ get_sql_params(lua_State *L, int t, int p, Oid *paramTypes, char **paramValues)
 		n = 1;
 		break;
 	case LUA_TTABLE:
-		lua_pushnil(L);
-		while (lua_next(L, t) != 0) {
+		for (k = 1;; k++) {
+			lua_pushinteger(L, k);
+			lua_gettable(L, t);
+			if (lua_isnil(L, -1))
+				break;
 			n += get_sql_params(L, -1, n, paramTypes, paramValues);
 			lua_pop(L, 1);
 		}
+		lua_pop(L, 1);
 		break;
 	default:
 		return luaL_argerror(L, t, "unsupported type");
