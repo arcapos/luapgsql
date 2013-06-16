@@ -449,7 +449,7 @@ conn_execParams(lua_State *L)
 	PGresult **res;
 	Oid *paramTypes;
 	char **paramValues;
-	int n, t, nParams, sqlParams;
+	int n, nParams, sqlParams;
 
 	nParams = lua_gettop(L) - 2;	/* subtract connection and command */
 	if (nParams < 0)
