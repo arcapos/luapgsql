@@ -132,12 +132,14 @@ pgsql_libVersion(lua_State *L)
 	return 1;
 }
 
+#if PG_VERSION_NUM >= 90100
 static int
 pgsql_ping(lua_State *L)
 {
 	lua_pushinteger(L, PQping(luaL_checkstring(L, 1)));
 	return 1;
 }
+#endif
 
 static int
 pgsql_encryptPassword(lua_State *L)
@@ -1517,7 +1519,9 @@ luaopen_pgsql(lua_State *L)
 		{ "connectStart", pgsql_connectStart },
 		{ "connectPoll", pgsql_connectPoll },
 		{ "libVersion", pgsql_libVersion },
+#if PG_VERSION_NUM >= 90100
 		{ "ping", pgsql_ping },
+#endif
 		{ "encryptPassword", pgsql_encryptPassword },
 		{ NULL, NULL }
 	};
