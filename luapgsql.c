@@ -27,7 +27,6 @@
 
 /* PostgreSQL extension module (using Lua) */
 
-#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -403,17 +402,10 @@ get_sql_params(lua_State *L, int t, int n, Oid *paramTypes, char **paramValues)
 		break;
 	case LUA_TNUMBER:
 		v = lua_tonumber(L, t);
-		if (modf(v, &i) == 0.0) {
-			if (paramTypes != NULL)
-				paramTypes[n] = INT4OID;
-			if (paramValues != NULL)
-				asprintf(&paramValues[n], "%.f", v);
-		} else {
-			if (paramTypes != NULL)
-				paramTypes[n] = NUMERICOID;
-			if (paramValues != NULL)
-				asprintf(&paramValues[n], "%f", v);
-		}
+		if (paramTypes != NULL)
+			paramTypes[n] = NUMERICOID;
+		if (paramValues != NULL)
+			asprintf(&paramValues[n], "%f", v);
 		n = 1;
 		break;
 	case LUA_TSTRING:
