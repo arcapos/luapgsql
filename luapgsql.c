@@ -1497,7 +1497,7 @@ pgsql_set_info(lua_State *L)
 	lua_pushliteral(L, "PostgreSQL binding for Lua");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "pgsql 1.2.1");
+	lua_pushliteral(L, "pgsql 1.2.2");
 	lua_settable(L, -3);
 }
 
@@ -1505,7 +1505,7 @@ int
 luaopen_pgsql(lua_State *L)
 {
 	int n;
-	struct luaL_reg luapgsql[] = {
+	struct luaL_Reg luapgsql[] = {
 		/* Database Connection Control Functions */
 		{ "connectdb", pgsql_connectdb },
 		{ "connectStart", pgsql_connectStart },
@@ -1518,7 +1518,7 @@ luaopen_pgsql(lua_State *L)
 		{ NULL, NULL }
 	};
 
-	struct luaL_reg conn_methods[] = {
+	struct luaL_Reg conn_methods[] = {
 		/* Database Connection Control Functions */
 		{ "finish", conn_finish },
 		{ "reset", conn_reset },
@@ -1597,7 +1597,7 @@ luaopen_pgsql(lua_State *L)
 		{ "lo_open", conn_lo_open },
 		{ NULL, NULL }
 	};
-	struct luaL_reg res_methods[] = {
+	struct luaL_Reg res_methods[] = {
 		/* Main functions */
 		{ "status", res_status },
 		{ "resStatus", res_resStatus },
@@ -1629,13 +1629,13 @@ luaopen_pgsql(lua_State *L)
 		{ "oidStatus", res_oidStatus },
 		{ NULL, NULL }
 	};
-	struct luaL_reg notify_methods[] = {
+	struct luaL_Reg notify_methods[] = {
 		{ "relname", notify_relname },
 		{ "pid", notify_pid },
 		{ "extra", notify_extra },
 		{ NULL, NULL }
 	};
-	struct luaL_reg lo_methods[] = {
+	struct luaL_Reg lo_methods[] = {
 		{ "write", pgsql_lo_write },
 		{ "read", pgsql_lo_read },
 		{ "lseek", pgsql_lo_lseek },
@@ -1646,8 +1646,11 @@ luaopen_pgsql(lua_State *L)
 	};
 
 	if (luaL_newmetatable(L, CONN_METATABLE)) {
+#if LUA_VERSION_NUM >= 502
+		luaL_setfuncs(L, conn_methods, 0);
+#else
 		luaL_register(L, NULL, conn_methods);
-
+#endif
 		lua_pushliteral(L, "__gc");
 		lua_pushcfunction(L, conn_finish);
 		lua_settable(L, -3);
@@ -1663,8 +1666,11 @@ luaopen_pgsql(lua_State *L)
 	lua_pop(L, 1);
 
 	if (luaL_newmetatable(L, RES_METATABLE)) {
+#if LUA_VERSION_NUM >= 502
+		luaL_setfuncs(L, res_methods, 0);
+#else
 		luaL_register(L, NULL, res_methods);
-
+#endif
 		lua_pushliteral(L, "__gc");
 		lua_pushcfunction(L, res_clear);
 		lua_settable(L, -3);
@@ -1680,8 +1686,11 @@ luaopen_pgsql(lua_State *L)
 	lua_pop(L, 1);
 
 	if (luaL_newmetatable(L, NOTIFY_METATABLE)) {
+#if LUA_VERSION_NUM >= 502
+		luaL_setfuncs(L, notify_methods, 0);
+#else
 		luaL_register(L, NULL, notify_methods);
-
+#endif
 		lua_pushliteral(L, "__gc");
 		lua_pushcfunction(L, notify_clear);
 		lua_settable(L, -3);
@@ -1697,8 +1706,11 @@ luaopen_pgsql(lua_State *L)
 	lua_pop(L, 1);
 
 	if (luaL_newmetatable(L, LO_METATABLE)) {
+#if LUA_VERSION_NUM >= 502
+		luaL_setfuncs(L, lo_methods, 0);
+#else
 		luaL_register(L, NULL, lo_methods);
-
+#endif
 		lua_pushliteral(L, "__gc");
 		lua_pushcfunction(L, pgsql_lo_clear);
 		lua_settable(L, -3);
@@ -1712,13 +1724,16 @@ luaopen_pgsql(lua_State *L)
 		lua_settable(L, -3);
 	}
 	lua_pop(L, 1);
-
+#if LUA_VERSION_NUM >= 502
+	luaL_newlib(L, luapgsql);
+#else
 	luaL_register(L, "pgsql", luapgsql);
+#endif
 	pgsql_set_info(L);
-
 	for (n = 0; pgsql_constant[n].name != NULL; n++) {
 		lua_pushinteger(L, pgsql_constant[n].value);
 		lua_setfield(L, -2, pgsql_constant[n].name);
 	};
+
 	return 1;
 }
