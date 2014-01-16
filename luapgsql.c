@@ -385,7 +385,7 @@ conn_exec(lua_State *L)
 static int
 get_sql_params(lua_State *L, int t, int n, Oid *paramTypes, char **paramValues)
 {
-	double v, i;
+	double v;
 	int k;
 
 	switch (lua_type(L, t)) {
