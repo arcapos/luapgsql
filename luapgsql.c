@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009 - 2013, Micro Systems Marc Balmer, CH-5073 Gipf-Oberfrick
+ * Copyright (c) 2009 - 2014, Micro Systems Marc Balmer, CH-5073 Gipf-Oberfrick
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -385,7 +385,7 @@ conn_exec(lua_State *L)
 static int
 get_sql_params(lua_State *L, int t, int n, Oid *paramTypes, char **paramValues)
 {
-	double v, i;
+	double v;
 	int k;
 
 	switch (lua_type(L, t)) {
@@ -404,9 +404,9 @@ get_sql_params(lua_State *L, int t, int n, Oid *paramTypes, char **paramValues)
 		v = lua_tonumber(L, t);
 		if (paramTypes != NULL)
 			paramTypes[n] = NUMERICOID;
-		if (paramValues != NULL)
-			asprintf(&paramValues[n], "%f", v);
-		n = 1;
+		if (paramValues != NULL &&
+		    asprintf(&paramValues[n], "%f", v) != -1)
+			n = 1;
 		break;
 	case LUA_TSTRING:
 		if (paramTypes != NULL)
@@ -1442,7 +1442,13 @@ static struct constant pgsql_constant[] = {
 	{ "PGRES_NONFATAL_ERROR",	PGRES_NONFATAL_ERROR },
 	{ "PGRES_FATAL_ERROR",		PGRES_FATAL_ERROR },
 
-	/* Transaction Status */
+	/* Polling status  */
+	{ "PGRES_POLLING_FAILED",	PGRES_POLLING_FAILED },
+	{ "PGRES_POLLING_READING",	PGRES_POLLING_READING },
+	{ "PGRES_POLLING_WRITING",	PGRES_POLLING_WRITING },
+	{ "PGRES_POLLING_OK",		PGRES_POLLING_OK },
+
+	/* Transaction status */
 	{ "PQTRANS_IDLE",		PQTRANS_IDLE },
 	{ "PQTRANS_ACTIVE",		PQTRANS_ACTIVE },
 	{ "PQTRANS_INTRANS",		PQTRANS_INTRANS },
@@ -1490,14 +1496,14 @@ static void
 pgsql_set_info(lua_State *L)
 {
 	lua_pushliteral(L, "_COPYRIGHT");
-	lua_pushliteral(L, "Copyright (C) 2011 - 2013 by "
+	lua_pushliteral(L, "Copyright (C) 2009 - 2014 by "
 	    "micro systems marc balmer");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_DESCRIPTION");
 	lua_pushliteral(L, "PostgreSQL binding for Lua");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "pgsql 1.2.2");
+	lua_pushliteral(L, "pgsql 1.2.3);
 	lua_settable(L, -3);
 }
 
@@ -1509,7 +1515,6 @@ luaopen_pgsql(lua_State *L)
 		/* Database Connection Control Functions */
 		{ "connectdb", pgsql_connectdb },
 		{ "connectStart", pgsql_connectStart },
-		{ "connectPoll", pgsql_connectPoll },
 		{ "libVersion", pgsql_libVersion },
 #if PG_VERSION_NUM >= 90100
 		{ "ping", pgsql_ping },
@@ -1520,6 +1525,7 @@ luaopen_pgsql(lua_State *L)
 
 	struct luaL_Reg conn_methods[] = {
 		/* Database Connection Control Functions */
+		{ "connectPoll", pgsql_connectPoll },
 		{ "finish", conn_finish },
 		{ "reset", conn_reset },
 		{ "resetStart", conn_resetStart },
