@@ -1503,7 +1503,7 @@ pgsql_set_info(lua_State *L)
 	lua_pushliteral(L, "PostgreSQL binding for Lua");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "pgsql 1.2.3);
+	lua_pushliteral(L, "pgsql 1.2.3");
 	lua_settable(L, -3);
 }
 
