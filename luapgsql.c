@@ -404,9 +404,10 @@ get_sql_params(lua_State *L, int t, int n, Oid *paramTypes, char **paramValues)
 		v = lua_tonumber(L, t);
 		if (paramTypes != NULL)
 			paramTypes[n] = NUMERICOID;
-		if (paramValues != NULL &&
-		    asprintf(&paramValues[n], "%f", v) != -1)
-			n = 1;
+		if (paramValues != NULL)
+		    if (asprintf(&paramValues[n], "%f", v) == -1)
+				paramValues[n] = NULL;
+		n = 1;
 		break;
 	case LUA_TSTRING:
 		if (paramTypes != NULL)
