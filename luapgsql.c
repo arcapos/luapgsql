@@ -92,8 +92,8 @@ static int
 pgsql_connectdb(lua_State *L)
 {
 	PGconn *conn, **data;
-
-	conn = PQconnectdb(luaL_checkstring(L, -1));
+	const char *conninfo = luaL_optstring(L, 1, "");
+	conn = PQconnectdb(conninfo);
 	if (conn != NULL) {
 		data = (PGconn **)lua_newuserdata(L, sizeof(PGconn *));
 		*data = conn;
@@ -107,10 +107,10 @@ pgsql_connectdb(lua_State *L)
 static int
 pgsql_connectStart(lua_State *L)
 {
+	const char *conninfo = luaL_optstring(L, 1, "");
 	PGconn **data;
-
 	data = (PGconn **)lua_newuserdata(L, sizeof(PGconn *));
-	*data = PQconnectStart(luaL_checkstring(L, -2));
+	*data = PQconnectStart(conninfo);
 	luaL_getmetatable(L, CONN_METATABLE);
 	lua_setmetatable(L, -2);
 	return 1;
