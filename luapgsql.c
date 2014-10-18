@@ -91,16 +91,15 @@ PQescape(PGconn *conn, char *dst, const char *from, size_t size)
 static int
 pgsql_connectdb(lua_State *L)
 {
-	PGconn *conn, **data;
 	const char *conninfo = luaL_optstring(L, 1, "");
-	conn = PQconnectdb(conninfo);
-	if (conn != NULL) {
-		data = (PGconn **)lua_newuserdata(L, sizeof(PGconn *));
-		*data = conn;
+	PGconn **data = (PGconn **)lua_newuserdata(L, sizeof(PGconn *));
+	*data = PQconnectdb(conninfo);
+	if (*data == NULL) {
+		lua_pushnil(L);
+	} else {
 		luaL_getmetatable(L, CONN_METATABLE);
 		lua_setmetatable(L, -2);
-	} else
-		lua_pushnil(L);
+	}
 	return 1;
 }
 
@@ -108,11 +107,14 @@ static int
 pgsql_connectStart(lua_State *L)
 {
 	const char *conninfo = luaL_optstring(L, 1, "");
-	PGconn **data;
-	data = (PGconn **)lua_newuserdata(L, sizeof(PGconn *));
+	PGconn **data = (PGconn **)lua_newuserdata(L, sizeof(PGconn *));
 	*data = PQconnectStart(conninfo);
-	luaL_getmetatable(L, CONN_METATABLE);
-	lua_setmetatable(L, -2);
+	if (*data == NULL) {
+		lua_pushnil(L);
+	} else {
+		luaL_getmetatable(L, CONN_METATABLE);
+		lua_setmetatable(L, -2);
+	}
 	return 1;
 }
 
