@@ -599,12 +599,13 @@ static int
 conn_escapeLiteral(lua_State *L)
 {
 	const char *s;
+	size_t length;
 	char *p;
 	PGconn **d;
 
 	d = luaL_checkudata(L, 1, CONN_METATABLE);
-	s = lua_tostring(L, 2);
-	p = PQescapeLiteral(*d, s, strlen(s));
+	s = luaL_checklstring(L, 2, &length);
+	p = PQescapeLiteral(*d, s, length);
 	lua_pushstring(L, p);
 	PQfreemem(p);
 	return 1;
@@ -614,12 +615,13 @@ static int
 conn_escapeIdentifier(lua_State *L)
 {
 	const char *s;
+	size_t length;
 	char *p;
 	PGconn **d;
 
 	d = luaL_checkudata(L, 1, CONN_METATABLE);
-	s = lua_tostring(L, 2);
-	p = PQescapeIdentifier(*d, s, strlen(s));
+	s = luaL_checklstring(L, 2, &length);
+	p = PQescapeIdentifier(*d, s, length);
 	lua_pushstring(L, p);
 	PQfreemem(p);
 	return 1;
