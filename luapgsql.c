@@ -33,7 +33,7 @@
 #include <syslog.h>
 #include <unistd.h>
 
-#include <postgres.h>
+#include <postgres_fe.h>
 #include <libpq-fe.h>
 #include <libpq/libpq-fs.h>
 #include <pg_config.h>
@@ -1572,7 +1572,7 @@ luaopen_pgsql(lua_State *L)
 		{ "getResult", conn_getResult },
 		{ "cancel", conn_cancel },
 
-		/* Asynchronous Notifications Funcions */
+		/* Asynchronous Notifications Functions */
 		{ "notifies", conn_notifies },
 
 		/* Function associated with the COPY command */
