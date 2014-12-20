@@ -107,12 +107,16 @@ pgsql_connectdb(lua_State *L)
 static int
 pgsql_connectStart(lua_State *L)
 {
-	PGconn **data;
+	PGconn *conn, **data;
 
-	data = (PGconn **)lua_newuserdata(L, sizeof(PGconn *));
-	*data = PQconnectStart(luaL_checkstring(L, -2));
-	luaL_getmetatable(L, CONN_METATABLE);
-	lua_setmetatable(L, -2);
+	conn = PQconnectStart(luaL_checkstring(L, -1));
+	if (conn != NULL) {
+		data = (PGconn **)lua_newuserdata(L, sizeof(PGconn *));
+		*data = conn;
+		luaL_getmetatable(L, CONN_METATABLE);
+		lua_setmetatable(L, -2);
+	} else
+		lua_pushnil(L);
 	return 1;
 }
 
