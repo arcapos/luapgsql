@@ -799,6 +799,16 @@ conn_cancel(lua_State *L)
 	return res == 1 ? 1 : 2;
 }
 
+static int
+conn_setSingleRowMode(lua_State *L)
+{
+	PGconn **d;
+
+	d = luaL_checkudata(L, 1, CONN_METATABLE);
+	lua_pushinteger(L, PQsetSingleRowMode(*d));
+	return 1;
+}
+
 /*
  * Asynchronous Notification Functions
  */
@@ -1122,7 +1132,7 @@ res_fnumber(lua_State *L)
 {
 	lua_pushinteger(L,
 	    PQfnumber(*(PGresult **)luaL_checkudata(L, 1, RES_METATABLE),
-	    luaL_checkstring(L, 2)) - 1);
+	    luaL_checkstring(L, 2)) + 1);
 	return 1;
 }
 
@@ -1131,7 +1141,7 @@ res_ftable(lua_State *L)
 {
 	lua_pushinteger(L,
 	    PQftable(*(PGresult **)luaL_checkudata(L, 1, RES_METATABLE),
-	    luaL_checkinteger(L, 2)) - 1);
+	    luaL_checkinteger(L, 2) - 1));
 	return 1;
 }
 
@@ -1140,7 +1150,7 @@ res_ftablecol(lua_State *L)
 {
 	lua_pushinteger(L,
 	    PQftablecol(*(PGresult **)luaL_checkudata(L, 1, RES_METATABLE),
-	    luaL_checkinteger(L, 2)) - 1);
+	    luaL_checkinteger(L, 2) - 1));
 	return 1;
 }
 
@@ -1149,7 +1159,7 @@ res_fformat(lua_State *L)
 {
 	lua_pushinteger(L,
 	    PQfformat(*(PGresult **)luaL_checkudata(L, 1, RES_METATABLE),
-	    luaL_checkinteger(L, 2)) - 1);
+	    luaL_checkinteger(L, 2) - 1));
 	return 1;
 }
 
@@ -1158,7 +1168,7 @@ res_ftype(lua_State *L)
 {
 	lua_pushinteger(L,
 	    PQftype(*(PGresult **)luaL_checkudata(L, 1, RES_METATABLE),
-	    luaL_checkinteger(L, 2)) - 1);
+	    luaL_checkinteger(L, 2) - 1));
 	return 1;
 }
 
@@ -1167,7 +1177,7 @@ res_fmod(lua_State *L)
 {
 	lua_pushinteger(L,
 	    PQfmod(*(PGresult **)luaL_checkudata(L, 1, RES_METATABLE),
-	    luaL_checkinteger(L, 2)) - 1);
+	    luaL_checkinteger(L, 2) - 1));
 	return 1;
 }
 
@@ -1176,7 +1186,7 @@ res_fsize(lua_State *L)
 {
 	lua_pushinteger(L,
 	    PQfsize(*(PGresult **)luaL_checkudata(L, 1, RES_METATABLE),
-	    luaL_checkinteger(L, 2)) - 1);
+	    luaL_checkinteger(L, 2) - 1));
 	return 1;
 }
 
@@ -1504,7 +1514,7 @@ pgsql_set_info(lua_State *L)
 	lua_pushliteral(L, "PostgreSQL binding for Lua");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "pgsql 1.2.3");
+	lua_pushliteral(L, "pgsql 1.3.0");
 	lua_settable(L, -3);
 }
 
@@ -1571,6 +1581,9 @@ luaopen_pgsql(lua_State *L)
 		{ "sendDescribePortal", conn_sendDescribePortal },
 		{ "getResult", conn_getResult },
 		{ "cancel", conn_cancel },
+
+		/* Retrieving query results row-by-row */
+		{ "setSingleRowMode", conn_setSingleRowMode },
 
 		/* Asynchronous Notifications Functions */
 		{ "notifies", conn_notifies },
