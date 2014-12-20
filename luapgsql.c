@@ -91,28 +91,30 @@ PQescape(PGconn *conn, char *dst, const char *from, size_t size)
 static int
 pgsql_connectdb(lua_State *L)
 {
-	PGconn *conn, **data;
-
-	conn = PQconnectdb(luaL_checkstring(L, -1));
-	if (conn != NULL) {
-		data = (PGconn **)lua_newuserdata(L, sizeof(PGconn *));
-		*data = conn;
+	const char *conninfo = luaL_optstring(L, 1, "");
+	PGconn **data = (PGconn **)lua_newuserdata(L, sizeof(PGconn *));
+	*data = PQconnectdb(conninfo);
+	if (*data == NULL) {
+		lua_pushnil(L);
+	} else {
 		luaL_getmetatable(L, CONN_METATABLE);
 		lua_setmetatable(L, -2);
-	} else
-		lua_pushnil(L);
+	}
 	return 1;
 }
 
 static int
 pgsql_connectStart(lua_State *L)
 {
-	PGconn **data;
-
-	data = (PGconn **)lua_newuserdata(L, sizeof(PGconn *));
-	*data = PQconnectStart(luaL_checkstring(L, -2));
-	luaL_getmetatable(L, CONN_METATABLE);
-	lua_setmetatable(L, -2);
+	const char *conninfo = luaL_optstring(L, 1, "");
+	PGconn **data = (PGconn **)lua_newuserdata(L, sizeof(PGconn *));
+	*data = PQconnectStart(conninfo);
+	if (*data == NULL) {
+		lua_pushnil(L);
+	} else {
+		luaL_getmetatable(L, CONN_METATABLE);
+		lua_setmetatable(L, -2);
+	}
 	return 1;
 }
 
@@ -597,12 +599,13 @@ static int
 conn_escapeLiteral(lua_State *L)
 {
 	const char *s;
+	size_t length;
 	char *p;
 	PGconn **d;
 
 	d = luaL_checkudata(L, 1, CONN_METATABLE);
-	s = lua_tostring(L, 2);
-	p = PQescapeLiteral(*d, s, strlen(s));
+	s = luaL_checklstring(L, 2, &length);
+	p = PQescapeLiteral(*d, s, length);
 	lua_pushstring(L, p);
 	PQfreemem(p);
 	return 1;
@@ -612,12 +615,13 @@ static int
 conn_escapeIdentifier(lua_State *L)
 {
 	const char *s;
+	size_t length;
 	char *p;
 	PGconn **d;
 
 	d = luaL_checkudata(L, 1, CONN_METATABLE);
-	s = lua_tostring(L, 2);
-	p = PQescapeIdentifier(*d, s, strlen(s));
+	s = luaL_checklstring(L, 2, &length);
+	p = PQescapeIdentifier(*d, s, length);
 	lua_pushstring(L, p);
 	PQfreemem(p);
 	return 1;
