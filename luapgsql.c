@@ -91,12 +91,11 @@ PQescape(PGconn *conn, char *dst, const char *from, size_t size)
 static int
 pgsql_connectdb(lua_State *L)
 {
-	PGconn *conn, **data;
+	PGconn **data;
 
-	conn = PQconnectdb(luaL_checkstring(L, -1));
-	if (conn != NULL) {
-		data = (PGconn **)lua_newuserdata(L, sizeof(PGconn *));
-		*data = conn;
+	data = (PGconn **)lua_newuserdata(L, sizeof(PGconn *));
+	*data = PQconnectdb(luaL_checkstring(L, 1));
+	if (*data != NULL) {
 		luaL_getmetatable(L, CONN_METATABLE);
 		lua_setmetatable(L, -2);
 	} else
@@ -107,12 +106,11 @@ pgsql_connectdb(lua_State *L)
 static int
 pgsql_connectStart(lua_State *L)
 {
-	PGconn *conn, **data;
+	PGconn **data;
 
-	conn = PQconnectStart(luaL_checkstring(L, -1));
-	if (conn != NULL) {
-		data = (PGconn **)lua_newuserdata(L, sizeof(PGconn *));
-		*data = conn;
+	data = (PGconn **)lua_newuserdata(L, sizeof(PGconn *));
+	*data = PQconnectStart(luaL_checkstring(L, 1));
+	if (*data != NULL) {
 		luaL_getmetatable(L, CONN_METATABLE);
 		lua_setmetatable(L, -2);
 	} else
@@ -603,10 +601,11 @@ conn_escapeLiteral(lua_State *L)
 	const char *s;
 	char *p;
 	PGconn **d;
+	size_t len;
 
 	d = luaL_checkudata(L, 1, CONN_METATABLE);
-	s = lua_tostring(L, 2);
-	p = PQescapeLiteral(*d, s, strlen(s));
+	s = luaL_checklstring(L, 2, &len);
+	p = PQescapeLiteral(*d, s, len);
 	lua_pushstring(L, p);
 	PQfreemem(p);
 	return 1;
@@ -618,13 +617,31 @@ conn_escapeIdentifier(lua_State *L)
 	const char *s;
 	char *p;
 	PGconn **d;
+	size_t len;
 
 	d = luaL_checkudata(L, 1, CONN_METATABLE);
-	s = lua_tostring(L, 2);
-	p = PQescapeIdentifier(*d, s, strlen(s));
+	s = luaL_checklstring(L, 2, &len);
+	p = PQescapeIdentifier(*d, s, len);
 	lua_pushstring(L, p);
 	PQfreemem(p);
 	return 1;
+}
+
+static int
+conn_escapeBytea(lua_State *L)
+{
+	unsigned char *p;
+	const unsigned char *s;
+	PGconn **d;
+	size_t from_length, to_length;
+
+	d = luaL_checkudata(L, 1, CONN_METATABLE);
+	s = (const unsigned char *)luaL_checklstring(L, 2, &from_length);
+	p = PQescapeByteaConn(*d, s, from_length, &to_length);
+	lua_pushstring(L, (const char *)p);
+	lua_pushinteger(L, to_length);
+	PQfreemem(p);
+	return 2;
 }
 
 /*
@@ -1518,7 +1535,7 @@ pgsql_set_info(lua_State *L)
 	lua_pushliteral(L, "PostgreSQL binding for Lua");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "pgsql 1.3.1");
+	lua_pushliteral(L, "pgsql 1.3.2");
 	lua_settable(L, -3);
 }
 
@@ -1569,6 +1586,7 @@ luaopen_pgsql(lua_State *L)
 		{ "escape", conn_escape },
 		{ "escapeLiteral", conn_escapeLiteral },
 		{ "escapeIdentifier", conn_escapeIdentifier },
+		{ "escapeBytea", conn_escapeBytea },
 		{ "exec", conn_exec },
 		{ "execParams", conn_execParams },
 		{ "prepare", conn_prepare },
