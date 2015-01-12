@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009 - 2014, Micro Systems Marc Balmer, CH-5073 Gipf-Oberfrick
+ * Copyright (c) 2009 - 2015, Micro Systems Marc Balmer, CH-5073 Gipf-Oberfrick
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,12 +27,6 @@
 
 /* PostgreSQL extension module (using Lua) */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <syslog.h>
-#include <unistd.h>
-
 #include <postgres_fe.h>
 #include <libpq-fe.h>
 #include <libpq/libpq-fs.h>
@@ -43,47 +37,7 @@
 #include <lauxlib.h>
 #include <lualib.h>
 
-#ifdef __linux__
-#include <bsd/bsd.h>
-#endif
-
 #include "luapgsql.h"
-
-static size_t
-PQescape(PGconn *conn, char *dst, const char *from, size_t size)
-{
-	size_t length, newsiz;
-	int error = 0;
-	char *buf;
-
-	length = 2 * strlen(from) + 1;
-	buf = malloc(length);
-	if (buf != NULL) {
-		if (conn == NULL)
-			newsiz = PQescapeString(buf, from, length);
-		else
-			newsiz = PQescapeStringConn(conn, buf, from, length,
-			    &error);
-		if (error) {
-			syslog(LOG_ERR, "error escaping string: %s",
-				PQerrorMessage(conn));
-			free(buf);
-			return strlcpy(dst, "", size);
-		}
-		if (newsiz > size - 1) {
-			syslog(LOG_ERR, "target buffer to small for escaped "
-			    "string");
-			free(buf);
-			return strlcpy(dst, "", size);
-		}
-	} else {
-		syslog(LOG_ERR, "memory allocation error");
-		return strlcpy(dst, "", size);
-	}
-	length = strlcpy(dst, buf, size);
-	free(buf);
-	return length;
-}
 
 /*
  * Database Connection Control Functions
@@ -403,11 +357,15 @@ get_sql_params(lua_State *L, int t, int n, Oid *paramTypes, char **paramValues)
 		n = 1;
 		break;
 	case LUA_TNUMBER:
+		/*
+		 * XXX Does not handle math.huge (Infinity), since Infinity
+		 * and -Infinity are not defined for PostgreSQL numeric values.
+		 */
 		v = lua_tonumber(L, t);
 		if (paramTypes != NULL)
 			paramTypes[n] = NUMERICOID;
 		if (paramValues != NULL)
-		    if (asprintf(&paramValues[n], "%f", v) == -1)
+			if (asprintf(&paramValues[n], "%f", v) == -1)
 				paramValues[n] = NULL;
 		n = 1;
 		break;
@@ -578,20 +536,32 @@ conn_describePortal(lua_State *L)
 }
 
 static int
-conn_escape(lua_State *L)
+conn_escapeString(lua_State *L)
 {
-	char buf[1024];
-	const char *str;
 	PGconn **d;
+	size_t len;
+	char *buf;
+	const char *str;
+	int error;
 
 	d = luaL_checkudata(L, 1, CONN_METATABLE);
 
-	str = lua_tostring(L, 2);
-	if (str != NULL) {
-		PQescape(*d, buf, str, sizeof(buf));
-		lua_pushstring(L, buf);
-	} else
+	str = lua_tolstring(L, 2, &len);
+	if (str == NULL) {
 		lua_pushnil(L);
+		return 1;
+	}
+	buf = calloc(len + 1, 2);
+	if (buf == NULL) {
+		lua_pushnil(L);
+		return 1;
+	}
+	PQescapeStringConn(*d, buf, str, len, &error);
+	if (!error)
+		lua_pushstring(L, buf);
+	else
+		lua_pushnil(L);
+	free(buf);
 	return 1;
 }
 
@@ -642,6 +612,23 @@ conn_escapeBytea(lua_State *L)
 	lua_pushinteger(L, to_length);
 	PQfreemem(p);
 	return 2;
+}
+
+static int
+conn_unescapeBytea(lua_State *L)
+{
+	unsigned char *p;
+	size_t len;
+
+	p = PQunescapeBytea((const unsigned char *)luaL_checkstring(L, 2),
+	    &len);
+	if (p == NULL)
+		lua_pushnil(L);
+	else {
+		lua_pushlstring(L, (const char *)p, len);
+		PQfreemem(p);
+	}
+	return 1;
 }
 
 /*
@@ -1528,14 +1515,14 @@ static void
 pgsql_set_info(lua_State *L)
 {
 	lua_pushliteral(L, "_COPYRIGHT");
-	lua_pushliteral(L, "Copyright (C) 2009 - 2014 by "
+	lua_pushliteral(L, "Copyright (C) 2009 - 2015 by "
 	    "micro systems marc balmer");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_DESCRIPTION");
 	lua_pushliteral(L, "PostgreSQL binding for Lua");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "pgsql 1.3.2");
+	lua_pushliteral(L, "pgsql 1.4.0");
 	lua_settable(L, -3);
 }
 
@@ -1583,10 +1570,11 @@ luaopen_pgsql(lua_State *L)
 		{ "connectionUsedPassword", conn_connectionUsedPassword },
 
 		/* Command Execution Functions */
-		{ "escape", conn_escape },
+		{ "escapeString", conn_escapeString },
 		{ "escapeLiteral", conn_escapeLiteral },
 		{ "escapeIdentifier", conn_escapeIdentifier },
 		{ "escapeBytea", conn_escapeBytea },
+		{ "unescapeBytea", conn_unescapeBytea },
 		{ "exec", conn_exec },
 		{ "execParams", conn_execParams },
 		{ "prepare", conn_prepare },
