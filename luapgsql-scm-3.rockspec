@@ -34,8 +34,6 @@ build = {
       linux = {
          modules = {
             pgsql = {
-               incdirs = { [2] = "$(LIBBSD_INCDIR)"; };
-               libdirs = { [2] = "$(LIBBSD_LIBDIR)"; };
                defines = { "_GNU_SOURCE" }; -- for asprintf
             };
          };
