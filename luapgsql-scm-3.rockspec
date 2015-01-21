@@ -19,15 +19,6 @@ external_dependencies = {
       header = "libpq-fe.h";
       library = "pq";
    };
-   platforms = {
-      linux = {
-         -- for strlcpy
-         LIBBSD = {
-            header = "bsd/bsd.h";
-            library = "bsd";
-         };
-      };
-   };
 }
 build = {
    type = "builtin";
@@ -45,7 +36,6 @@ build = {
             pgsql = {
                incdirs = { [2] = "$(LIBBSD_INCDIR)"; };
                libdirs = { [2] = "$(LIBBSD_LIBDIR)"; };
-               libraries = { [2] = "bsd"; };
                defines = { "_GNU_SOURCE" }; -- for asprintf
             };
          };
