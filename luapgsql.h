@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009 - 2014, Micro Systems Marc Balmer, CH-5073 Gipf-Oberfrick
+ * Copyright (c) 2009 - 2015, Micro Systems Marc Balmer, CH-5073 Gipf-Oberfrick
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -34,6 +34,11 @@
 #define RES_METATABLE		"pgsql result methods"
 #define NOTIFY_METATABLE	"pgsql asychronous notification methods"
 #define LO_METATABLE		"pgsql large object methods"
+
+/* OIDs from server/pg_type.h */
+#define BOOLOID			16
+#define TEXTOID			25
+#define NUMERICOID		1700
 
 typedef struct largeObject {
 	PGconn	*conn;

@@ -27,11 +27,12 @@
 
 /* PostgreSQL extension module (using Lua) */
 
-#include <postgres_fe.h>
+#include <string.h>
+#include <stdlib.h>
+
 #include <libpq-fe.h>
 #include <libpq/libpq-fs.h>
 #include <pg_config.h>
-#include <catalog/pg_type.h>
 
 #include <lua.h>
 #include <lauxlib.h>
@@ -807,6 +808,7 @@ conn_cancel(lua_State *L)
 	return res == 1 ? 1 : 2;
 }
 
+#if PG_VERSION_NUMBER >= 90200
 static int
 conn_setSingleRowMode(lua_State *L)
 {
@@ -816,6 +818,7 @@ conn_setSingleRowMode(lua_State *L)
 	lua_pushinteger(L, PQsetSingleRowMode(*d));
 	return 1;
 }
+#endif
 
 /*
  * Asynchronous Notification Functions
@@ -1522,7 +1525,7 @@ pgsql_set_info(lua_State *L)
 	lua_pushliteral(L, "PostgreSQL binding for Lua");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "pgsql 1.4.0");
+	lua_pushliteral(L, "pgsql 1.4.1");
 	lua_settable(L, -3);
 }
 
@@ -1592,8 +1595,10 @@ luaopen_pgsql(lua_State *L)
 		{ "getResult", conn_getResult },
 		{ "cancel", conn_cancel },
 
+#if PG_VERSION_NUMBER >= 90200
 		/* Retrieving query results row-by-row */
 		{ "setSingleRowMode", conn_setSingleRowMode },
+#endif
 
 		/* Asynchronous Notifications Functions */
 		{ "notifies", conn_notifies },
