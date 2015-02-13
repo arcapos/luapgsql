@@ -808,7 +808,7 @@ conn_cancel(lua_State *L)
 	return res == 1 ? 1 : 2;
 }
 
-#if PG_VERSION_NUMBER >= 90200
+#if PG_VERSION_NUM >= 90200
 static int
 conn_setSingleRowMode(lua_State *L)
 {
@@ -1595,7 +1595,7 @@ luaopen_pgsql(lua_State *L)
 		{ "getResult", conn_getResult },
 		{ "cancel", conn_cancel },
 
-#if PG_VERSION_NUMBER >= 90200
+#if PG_VERSION_NUM >= 90200
 		/* Retrieving query results row-by-row */
 		{ "setSingleRowMode", conn_setSingleRowMode },
 #endif
