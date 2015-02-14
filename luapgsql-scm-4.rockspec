@@ -1,5 +1,5 @@
 package = "luapgsql"
-version = "scm-3"
+version = "scm-4"
 source = {
    url = "git://github.com/mbalmer/luapgsql";
 }
@@ -12,9 +12,6 @@ dependencies = {
    "lua >= 5.1, < 5.3";
 }
 external_dependencies = {
-   POSTGRESQL = {
-      header = "postgres_fe.h";
-   };
    PQ = {
       header = "libpq-fe.h";
       library = "pq";
@@ -25,8 +22,8 @@ build = {
    modules = {
       pgsql = {
          sources = "luapgsql.c";
-         incdirs = { "$(POSTGRESQL_INCDIR)" };
-         libdirs = { "$(POSTGRESQL_LIBDIR)" };
+         incdirs = { "$(PQ_INCDIR)" };
+         libdirs = { "$(PQ_LIBDIR)" };
          libraries = { "pq" };
       };
    };
