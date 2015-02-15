@@ -38,7 +38,7 @@
 /* OIDs from server/pg_type.h */
 #define BOOLOID			16
 #define TEXTOID			25
-#define NUMERICOID		1700
+#define FLOAT8OID		701
 
 typedef struct largeObject {
 	PGconn	*conn;

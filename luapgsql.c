@@ -27,8 +27,10 @@
 
 /* PostgreSQL extension module (using Lua) */
 
+#include <endian.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 #include <libpq-fe.h>
 #include <libpq/libpq-fs.h>
@@ -340,9 +342,9 @@ conn_exec(lua_State *L)
 }
 
 static int
-get_sql_params(lua_State *L, int t, int n, Oid *paramTypes, char **paramValues)
+get_sql_params(lua_State *L, int t, int n, Oid *paramTypes, char **paramValues,
+    int *paramLengths, int *paramFormats)
 {
-	double v;
 	int k;
 
 	switch (lua_type(L, t)) {
@@ -350,10 +352,10 @@ get_sql_params(lua_State *L, int t, int n, Oid *paramTypes, char **paramValues)
 		if (paramTypes != NULL)
 			paramTypes[n] = BOOLOID;
 		if (paramValues != NULL) {
-			if (lua_toboolean(L, t))
-				paramValues[n] = strdup("true");
-			else
-				paramValues[n] = strdup("false");
+			paramValues[n] = malloc(1);
+			*(char *)paramValues[n] = lua_toboolean(L, t);
+			paramLengths[n] = 1;
+			paramFormats[n] = 1;
 		}
 		n = 1;
 		break;
@@ -362,12 +364,20 @@ get_sql_params(lua_State *L, int t, int n, Oid *paramTypes, char **paramValues)
 		 * XXX Does not handle math.huge (Infinity), since Infinity
 		 * and -Infinity are not defined for PostgreSQL numeric values.
 		 */
-		v = lua_tonumber(L, t);
 		if (paramTypes != NULL)
-			paramTypes[n] = NUMERICOID;
-		if (paramValues != NULL)
-			if (asprintf(&paramValues[n], "%f", v) == -1)
-				paramValues[n] = NULL;
+			paramTypes[n] = FLOAT8OID;
+		if (paramValues != NULL) {
+			union {
+				double v;
+				uint64_t i;
+			} swap;
+
+			swap.v = lua_tonumber(L, t);
+			paramValues[n] = malloc(sizeof(uint64_t));
+			*(uint64_t *)paramValues[n] = htobe64(swap.i);
+			paramLengths[n] = sizeof(uint64_t);
+			paramFormats[n] = 1;
+		}
 		n = 1;
 		break;
 	case LUA_TSTRING:
@@ -388,7 +398,8 @@ get_sql_params(lua_State *L, int t, int n, Oid *paramTypes, char **paramValues)
 			lua_gettable(L, t);
 			if (lua_isnil(L, -1))
 				break;
-			n += get_sql_params(L, -1, n, paramTypes, paramValues);
+			n += get_sql_params(L, -1, n, paramTypes, paramValues,
+			    paramLengths, paramFormats);
 			lua_pop(L, 1);
 		}
 		lua_pop(L, 1);
@@ -405,30 +416,36 @@ conn_execParams(lua_State *L)
 	PGresult **res;
 	Oid *paramTypes;
 	char **paramValues;
-	int n, nParams, sqlParams;
+	int n, nParams, sqlParams, *paramLengths, *paramFormats;
 
 	nParams = lua_gettop(L) - 2;	/* subtract connection and command */
 	if (nParams < 0)
 		nParams = 0;
 
 	for (n = 0, sqlParams = 0; n < nParams; n++)
-		sqlParams += get_sql_params(L, 3 + n, sqlParams, NULL, NULL);
+		sqlParams += get_sql_params(L, 3 + n, sqlParams, NULL, NULL,
+		    NULL, NULL);
 
 	if (sqlParams) {
 		paramTypes = calloc(sqlParams, sizeof(Oid));
 		paramValues = calloc(sqlParams, sizeof(char *));
+		paramLengths = calloc(sqlParams, sizeof(int));
+		paramFormats = calloc(sqlParams, sizeof(int));
 
 		for (n = 0, sqlParams = 0; n < nParams; n++)
 			sqlParams += get_sql_params(L, 3 + n, sqlParams,
-			    paramTypes, paramValues);
+			    paramTypes, paramValues, paramLengths,
+			    paramFormats);
 	} else {
 		paramTypes = NULL;
 		paramValues = NULL;
+		paramLengths = NULL;
+		paramFormats = NULL;
 	}
 	res = lua_newuserdata(L, sizeof(PGresult *));
 	*res = PQexecParams(*(PGconn **)luaL_checkudata(L, 1, CONN_METATABLE),
 	    luaL_checkstring(L, 2), sqlParams, paramTypes,
-	    (const char * const*)paramValues, NULL, NULL, 0);
+	    (const char * const*)paramValues, paramLengths, paramFormats, 0);
 	luaL_getmetatable(L, RES_METATABLE);
 	lua_setmetatable(L, -2);
 	if (sqlParams) {
@@ -436,6 +453,8 @@ conn_execParams(lua_State *L)
 			free((void *)paramValues[n]);
 		free(paramTypes);
 		free(paramValues);
+		free(paramLengths);
+		free(paramFormats);
 	}
 	return 1;
 }
@@ -452,14 +471,15 @@ conn_prepare(lua_State *L)
 		nParams = 0;
 
 	for (n = 0, sqlParams = 0; n < nParams; n++)
-		sqlParams += get_sql_params(L, 4 + n, sqlParams, NULL, NULL);
+		sqlParams += get_sql_params(L, 4 + n, sqlParams, NULL, NULL,
+		    NULL, NULL);
 
 	if (sqlParams) {
 		paramTypes = calloc(sqlParams, sizeof(Oid));
 
 		for (n = 0, sqlParams = 0; n < nParams; n++)
 			sqlParams += get_sql_params(L, 4 + n, sqlParams,
-			    paramTypes, NULL);
+			    paramTypes, NULL, NULL, NULL);
 	} else
 		paramTypes = NULL;
 	res = lua_newuserdata(L, sizeof(PGresult *));
@@ -478,27 +498,33 @@ conn_execPrepared(lua_State *L)
 {
 	PGresult **res;
 	char **paramValues;
-	int n, nParams, sqlParams;
+	int n, nParams, sqlParams, *paramLengths, *paramFormats;
 
 	nParams = lua_gettop(L) - 2;	/* subtract connection and name */
 	if (nParams < 0)
 		nParams = 0;
 
 	for (n = 0, sqlParams = 0; n < nParams; n++)
-		sqlParams += get_sql_params(L, 3 + n, sqlParams, NULL, NULL);
+		sqlParams += get_sql_params(L, 3 + n, sqlParams, NULL, NULL,
+		    NULL, NULL);
 
 	if (sqlParams) {
 		paramValues = calloc(sqlParams, sizeof(char *));
+		paramLengths = calloc(sqlParams, sizeof(int));
+		paramFormats = calloc(sqlParams, sizeof(int));
 
 		for (n = 0, sqlParams = 0; n < nParams; n++)
 			sqlParams += get_sql_params(L, 3 + n, sqlParams, NULL,
-			    paramValues);
-	} else
+			    paramValues, paramLengths, paramFormats);
+	} else {
 		paramValues = NULL;
+		paramLengths = NULL;
+		paramFormats = NULL;
+	}
 	res = lua_newuserdata(L, sizeof(PGresult *));
 	*res = PQexecPrepared(*(PGconn **)luaL_checkudata(L, 1, CONN_METATABLE),
 	    luaL_checkstring(L, 2), sqlParams, (const char * const*)paramValues,
-	    NULL, NULL, 0);
+	    paramLengths, paramFormats, 0);
 	luaL_getmetatable(L, RES_METATABLE);
 	lua_setmetatable(L, -2);
 	if (sqlParams) {
@@ -506,6 +532,8 @@ conn_execPrepared(lua_State *L)
 			if (paramValues[n] != NULL)
 				free((void *)paramValues[n]);
 		free(paramValues);
+		free(paramLengths);
+		free(paramFormats);
 	}
 	return 1;
 }
@@ -649,36 +677,44 @@ conn_sendQueryParams(lua_State *L)
 {
 	Oid *paramTypes;
 	char **paramValues;
-	int n, nParams, sqlParams;
+	int n, nParams, sqlParams, *paramLengths, *paramFormats;
 
 	nParams = lua_gettop(L) - 2;	/* subtract connection and command */
 	if (nParams < 0)
 		nParams = 0;
 
 	for (n = 0, sqlParams = 0; n < nParams; n++)
-		sqlParams += get_sql_params(L, 3 + n, 0, NULL, NULL);
+		sqlParams += get_sql_params(L, 3 + n, 0, NULL, NULL, NULL,
+		    NULL);
 
 	if (sqlParams) {
 		paramTypes = calloc(sqlParams, sizeof(Oid));
 		paramValues = calloc(sqlParams, sizeof(char *));
+		paramLengths = calloc(sqlParams, sizeof(int));
+		paramFormats = calloc(sqlParams, sizeof(int));
 
 		for (n = 0, sqlParams = 0; n < nParams; n++)
 			sqlParams += get_sql_params(L, 3 + n, sqlParams,
-			    paramTypes, paramValues);
+			    paramTypes, paramValues, paramLengths,
+			    paramFormats);
 	} else {
 		paramTypes = NULL;
 		paramValues = NULL;
+		paramLengths = NULL;
+		paramFormats = NULL;
 	}
 	lua_pushinteger(L,
 	    PQsendQueryParams(*(PGconn **)luaL_checkudata(L, 1, CONN_METATABLE),
 	    luaL_checkstring(L, 2), sqlParams, paramTypes,
-	    (const char * const*)paramValues, NULL, NULL, 0));
+	    (const char * const*)paramValues, paramLengths, paramFormats, 0));
 	if (sqlParams) {
 		for (n = 0; n < sqlParams; n++)
 			if (paramValues[n] != NULL)
 				free((void *)paramValues[n]);
 		free(paramTypes);
 		free(paramValues);
+		free(paramLengths);
+		free(paramFormats);
 	}
 	return 1;
 }
@@ -694,14 +730,15 @@ conn_sendPrepare(lua_State *L)
 		nParams = 0;
 
 	for (n = 0, sqlParams = 0; n < nParams; n++)
-		sqlParams += get_sql_params(L, 4 + n, 0, NULL, NULL);
+		sqlParams += get_sql_params(L, 4 + n, 0, NULL, NULL, NULL,
+		    NULL);
 
 	if (sqlParams) {
 		paramTypes = calloc(sqlParams, sizeof(Oid));
 
 		for (n = 0, sqlParams = 0; n < nParams; n++)
 			sqlParams += get_sql_params(L, 4 + n, sqlParams,
-			    paramTypes, NULL);
+			    paramTypes, NULL, NULL, NULL);
 	} else
 		paramTypes = NULL;
 	lua_pushinteger(L,
@@ -717,33 +754,42 @@ static int
 conn_sendQueryPrepared(lua_State *L)
 {
 	char **paramValues;
-	int n, nParams, sqlParams;
+	int n, nParams, sqlParams, *paramLengths, *paramFormats;
 
 	nParams = lua_gettop(L) - 2;	/* subtract connection and name */
 	if (nParams < 0)
 		nParams = 0;
 
 	for (n = 0, sqlParams = 0; n < nParams; n++)
-		sqlParams += get_sql_params(L, 3 + n, 0, NULL, NULL);
+		sqlParams += get_sql_params(L, 3 + n, 0, NULL, NULL, NULL,
+		    NULL);
 
 	if (sqlParams) {
 		paramValues = calloc(sqlParams, sizeof(char *));
+		paramLengths = calloc(sqlParams, sizeof(int));
+		paramFormats = calloc(sqlParams, sizeof(int));
 
 		for (n = 0, sqlParams = 0; n < nParams; n++)
 			sqlParams += get_sql_params(L, 3 + n, sqlParams, NULL,
-			    paramValues);
-	} else
+			    paramValues, paramLengths, paramFormats);
+	} else {
 		paramValues = NULL;
+		paramLengths = NULL;
+		paramFormats = NULL;
+	}
 	lua_pushinteger(L,
 	    PQsendQueryPrepared(*(PGconn **)luaL_checkudata(L, 1,
 	    CONN_METATABLE),
 	    luaL_checkstring(L, 2), nParams, (const char * const*)paramValues,
-	    NULL, NULL, 0));
+	    paramLengths, paramFormats, 0));
 	if (nParams) {
 		for (n = 0; n < nParams; n++)
 			if (paramValues[n] != NULL)
 				free((void *)paramValues[n]);
 		free(paramValues);
+		free(paramLengths);
+		free(paramFormats);
+
 	}
 	return 1;
 }
@@ -1525,7 +1571,7 @@ pgsql_set_info(lua_State *L)
 	lua_pushliteral(L, "PostgreSQL binding for Lua");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "pgsql 1.4.1");
+	lua_pushliteral(L, "pgsql 1.4.2");
 	lua_settable(L, -3);
 }
 
