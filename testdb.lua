@@ -1,4 +1,4 @@
-require 'pgsql'
+local pgsql = require 'pgsql'
 
 conn = pgsql.connectdb('dbname=arcapos user=lua password=42')
 print(conn:errorMessage())
