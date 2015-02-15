@@ -360,10 +360,6 @@ get_sql_params(lua_State *L, int t, int n, Oid *paramTypes, char **paramValues,
 		n = 1;
 		break;
 	case LUA_TNUMBER:
-		/*
-		 * XXX Does not handle math.huge (Infinity), since Infinity
-		 * and -Infinity are not defined for PostgreSQL numeric values.
-		 */
 		if (paramTypes != NULL)
 			paramTypes[n] = FLOAT8OID;
 		if (paramValues != NULL) {
