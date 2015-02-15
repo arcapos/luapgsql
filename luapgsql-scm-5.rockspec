@@ -1,5 +1,5 @@
 package = "luapgsql"
-version = "scm-4"
+version = "scm-5"
 source = {
    url = "git://github.com/mbalmer/luapgsql";
 }
@@ -25,15 +25,6 @@ build = {
          incdirs = { "$(PQ_INCDIR)" };
          libdirs = { "$(PQ_LIBDIR)" };
          libraries = { "pq" };
-      };
-   };
-   platforms = {
-      linux = {
-         modules = {
-            pgsql = {
-               defines = { "_GNU_SOURCE" }; -- for asprintf
-            };
-         };
       };
    };
 }
