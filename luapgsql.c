@@ -487,11 +487,12 @@ conn_execParams(lua_State *L)
 	return 1;
 
 errout:
-	if (paramValues)
+	if (paramValues) {
 		for (n = 0; n < sqlParams; n++)
 			free((void *)paramValues[n]);
+		free(paramValues);
+	}
 	free(paramTypes);
-	free(paramValues);
 	free(paramLengths);
 	free(paramFormats);
 	return luaL_error(L, "out of memory");
@@ -590,10 +591,11 @@ conn_execPrepared(lua_State *L)
 	}
 	return 1;
 errout:
-	if (paramValues)
+	if (paramValues) {
 		for (n = 0; n < sqlParams; n++)
 			free((void *)paramValues[n]);
-	free(paramValues);
+		free(paramValues);
+	}
 	free(paramLengths);
 	free(paramFormats);
 	return luaL_error(L, "out of memory");
@@ -783,11 +785,12 @@ conn_sendQueryParams(lua_State *L)
 	}
 	return 1;
 errout:
-	if (paramValues)
+	if (paramValues) {
 		for (n = 0; n < sqlParams; n++)
 			free((void *)paramValues[n]);
+		free(paramValues);
+	}
 	free(paramTypes);
-	free(paramValues);
 	free(paramLengths);
 	free(paramFormats);
 	return luaL_error(L, "out of memory");
@@ -879,10 +882,11 @@ conn_sendQueryPrepared(lua_State *L)
 	}
 	return 1;
 errout:
-	if (paramValues)
+	if (paramValues) {
 		for (n = 0; n < nParams; n++)
 			free((void *)paramValues[n]);
-	free(paramValues);
+		free(paramValues);
+	}
 	free(paramLengths);
 	free(paramFormats);
 	return luaL_error(L, "out of memory");
