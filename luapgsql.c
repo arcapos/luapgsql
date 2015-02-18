@@ -454,6 +454,10 @@ conn_execParams(lua_State *L)
 		paramLengths = calloc(sqlParams, sizeof(int));
 		paramFormats = calloc(sqlParams, sizeof(int));
 
+		if (paramTypes == NULL || paramValues == NULL
+		    || paramLengths == NULL || paramFormats == NULL)
+		    	goto errout;
+
 		for (n = 0, sqlParams = 0; n < nParams; n++) {
 			if (get_sql_params(L, 3 + n, sqlParams, paramTypes,
 			    paramValues, paramLengths, paramFormats, &count))
