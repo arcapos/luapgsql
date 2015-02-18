@@ -27,7 +27,12 @@
 
 /* PostgreSQL extension module (using Lua) */
 
+#ifdef __APPLE__
+#include <libkern/OSByteOrder.h>
+#define htobe64(x) OSSwapHostToBigInt64(x)
+#else
 #include <endian.h>
+#endif
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -391,8 +396,11 @@ get_sql_params(lua_State *L, int t, int n, Oid *paramTypes, char **paramValues,
 			paramValues[n] = malloc(len + 1);
 			if (paramValues[n] == NULL)
 				return -1;
-			memcpy(paramValues[n], s, len);
-			paramValues[n][len] = '\0';
+			/*
+			 * lua_tolstring returns a string with '\0' after
+			 * the last character.
+			 */
+			memcpy(paramValues[n], s, len + 1);
 		}
 		n = 1;
 		break;
@@ -440,7 +448,6 @@ conn_execParams(lua_State *L)
 		    &count);
 		sqlParams += count;
 	}
-
 	if (sqlParams) {
 		paramTypes = calloc(sqlParams, sizeof(Oid));
 		paramValues = calloc(sqlParams, sizeof(char *));
@@ -496,11 +503,11 @@ conn_prepare(lua_State *L)
 	if (nParams < 0)
 		nParams = 0;
 
-	for (n = 0, sqlParams = 0; n < nParams; n++)
+	for (n = 0, sqlParams = 0; n < nParams; n++) {
 		get_sql_params(L, 4 + n, sqlParams, NULL, NULL, NULL, NULL,
 		    &count);
 		sqlParams += count;
-
+	}
 	if (sqlParams) {
 		paramTypes = calloc(sqlParams, sizeof(Oid));
 		if (paramTypes == NULL)
@@ -538,11 +545,11 @@ conn_execPrepared(lua_State *L)
 	if (nParams < 0)
 		nParams = 0;
 
-	for (n = 0, sqlParams = 0; n < nParams; n++)
+	for (n = 0, sqlParams = 0; n < nParams; n++) {
 		get_sql_params(L, 3 + n, sqlParams, NULL, NULL,  NULL, NULL,
 		    &count);
 		sqlParams += count;
-
+	}
 	if (sqlParams) {
 		paramValues = calloc(sqlParams, sizeof(char *));
 		paramLengths = calloc(sqlParams, sizeof(int));
@@ -731,8 +738,7 @@ conn_sendQueryParams(lua_State *L)
 		nParams = 0;
 
 	for (n = 0, sqlParams = 0; n < nParams; n++) {
-		get_sql_params(L, 3 + n, 0, NULL, NULL, NULL,
-		    NULL, &count);
+		get_sql_params(L, 3 + n, 0, NULL, NULL, NULL, NULL, &count);
 		sqlParams += count;
 	}
 	if (sqlParams) {
@@ -745,11 +751,12 @@ conn_sendQueryParams(lua_State *L)
 		    || paramLengths == NULL || paramFormats == NULL)
 		    	goto errout;
 
-		for (n = 0, sqlParams = 0; n < nParams; n++)
+		for (n = 0, sqlParams = 0; n < nParams; n++) {
 			if (get_sql_params(L, 3 + n, sqlParams, paramTypes,
 			    paramValues, paramLengths, paramFormats, &count))
 			    	goto errout;
 			sqlParams += count;
+		}
 	} else {
 		paramTypes = NULL;
 		paramValues = NULL;
@@ -790,8 +797,7 @@ conn_sendPrepare(lua_State *L)
 		nParams = 0;
 
 	for (n = 0, sqlParams = 0; n < nParams; n++) {
-		get_sql_params(L, 4 + n, 0, NULL, NULL, NULL,
-		    NULL, &count);
+		get_sql_params(L, 4 + n, 0, NULL, NULL, NULL, NULL, &count);
 		sqlParams += count;
 	}
 	if (sqlParams) {
@@ -841,11 +847,12 @@ conn_sendQueryPrepared(lua_State *L)
 		    || paramFormats == NULL)
 		    	goto errout;
 
-		for (n = 0, sqlParams = 0; n < nParams; n++)
+		for (n = 0, sqlParams = 0; n < nParams; n++) {
 			if (get_sql_params(L, 3 + n, sqlParams, NULL,
 			    paramValues, paramLengths, paramFormats, &count))
 			    	goto errout;
 			sqlParams += count;
+		}
 	} else {
 		paramValues = NULL;
 		paramLengths = NULL;
