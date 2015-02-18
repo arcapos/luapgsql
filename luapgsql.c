@@ -483,8 +483,9 @@ conn_execParams(lua_State *L)
 	return 1;
 
 errout:
-	for (n = 0; n < sqlParams; n++)
-		free((void *)paramValues[n]);
+	if (paramValues)
+		for (n = 0; n < sqlParams; n++)
+			free((void *)paramValues[n]);
 	free(paramTypes);
 	free(paramValues);
 	free(paramLengths);
@@ -585,8 +586,9 @@ conn_execPrepared(lua_State *L)
 	}
 	return 1;
 errout:
-	for (n = 0; n < sqlParams; n++)
-		free((void *)paramValues[n]);
+	if (paramValues)
+		for (n = 0; n < sqlParams; n++)
+			free((void *)paramValues[n]);
 	free(paramValues);
 	free(paramLengths);
 	free(paramFormats);
@@ -777,8 +779,9 @@ conn_sendQueryParams(lua_State *L)
 	}
 	return 1;
 errout:
-	for (n = 0; n < sqlParams; n++)
-		free((void *)paramValues[n]);
+	if (paramValues)
+		for (n = 0; n < sqlParams; n++)
+			free((void *)paramValues[n]);
 	free(paramTypes);
 	free(paramValues);
 	free(paramLengths);
@@ -872,8 +875,9 @@ conn_sendQueryPrepared(lua_State *L)
 	}
 	return 1;
 errout:
-	for (n = 0; n < nParams; n++)
-		free((void *)paramValues[n]);
+	if (paramValues)
+		for (n = 0; n < nParams; n++)
+			free((void *)paramValues[n]);
 	free(paramValues);
 	free(paramLengths);
 	free(paramFormats);
