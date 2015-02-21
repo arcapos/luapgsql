@@ -86,7 +86,7 @@ pgsql_conn(lua_State *L, int n)
 	PGconn **data;
 
 	data = luaL_checkudata(L, n, CONN_METATABLE);
-	luaL_argcheck(L, *data != NULL, n, "connection is finished");
+	luaL_argcheck(L, *data != NULL, n, "database connection is finished");
 	return *data;
 }
 
