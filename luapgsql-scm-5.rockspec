@@ -9,7 +9,7 @@ description = {
    license = "3-clause BSD";
 }
 dependencies = {
-   "lua >= 5.1, < 5.3";
+   "lua >= 5.3";
 }
 external_dependencies = {
    PQ = {
