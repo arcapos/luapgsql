@@ -353,14 +353,24 @@ get_sql_params(lua_State *L, int t, int n, Oid *paramTypes, char **paramValues,
 		break;
 	case LUA_TNUMBER:
 		if (paramTypes != NULL)
-			paramTypes[n] = FLOAT8OID;
+#if LUA_VERSION_NUM >= 503
+			if (lua_isinteger(L, t))
+				paramType[n] = INT8OID;
+			else
+#endif
+				paramTypes[n] = FLOAT8OID;
 		if (paramValues != NULL) {
 			union {
 				double v;
 				uint64_t i;
 			} swap;
 
-			swap.v = lua_tonumber(L, t);
+#if LUA_VERSION_NUM >= 503
+			if (lua_isinteger(L, t))
+				swap.i = lua_tointeger(L, t);
+			else
+#endif
+				swap.v = lua_tonumber(L, t);
 			paramValues[n] = malloc(sizeof(uint64_t));
 			if (paramValues[n] == NULL)
 				return -1;
@@ -1226,7 +1236,7 @@ res_fname(lua_State *L)
 {
 	lua_pushstring(L,
 	    PQfname(*(PGresult **)luaL_checkudata(L, 1, RES_METATABLE),
-	    luaL_checkint(L, 2) - 1));
+	    luaL_checkinteger(L, 2) - 1));
 	return 1;
 }
 
@@ -1306,7 +1316,7 @@ res_getvalue(lua_State *L)
 {
 	lua_pushstring(L,
 	    PQgetvalue(*(PGresult **)luaL_checkudata(L, 1, RES_METATABLE),
-	    luaL_checkint(L, 2) - 1, luaL_checkint(L, 3) - 1));
+	    luaL_checkinteger(L, 2) - 1, luaL_checkinteger(L, 3) - 1));
 	return 1;
 }
 
@@ -1315,7 +1325,7 @@ res_getisnull(lua_State *L)
 {
 	lua_pushboolean(L,
 	    PQgetisnull(*(PGresult **)luaL_checkudata(L, 1, RES_METATABLE),
-	    luaL_checkint(L, 2) - 1, luaL_checkint(L, 3) - 1));
+	    luaL_checkinteger(L, 2) - 1, luaL_checkinteger(L, 3) - 1));
 	return 1;
 }
 
@@ -1324,7 +1334,7 @@ res_getlength(lua_State *L)
 {
 	lua_pushinteger(L,
 	    PQgetlength(*(PGresult **)luaL_checkudata(L, 1, RES_METATABLE),
-	    luaL_checkint(L, 2) - 1, luaL_checkint(L, 3) - 1));
+	    luaL_checkinteger(L, 2) - 1, luaL_checkinteger(L, 3) - 1));
 	return 1;
 }
 

@@ -37,6 +37,7 @@
 
 /* OIDs from server/pg_type.h */
 #define BOOLOID			16
+#define INT8OID			20
 #define TEXTOID			25
 #define FLOAT8OID		701
 
