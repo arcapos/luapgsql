@@ -1036,8 +1036,8 @@ conn_trace(lua_State *L)
 	FILE **fp;
 
 	fp = luaL_checkudata(L, 2, LUA_FILEHANDLE);
-	if (*fp)
-		PQtrace(pgsql_conn(L, 1), *fp);
+	luaL_argcheck(L, *fp != NULL, 2, "invalid file handle");
+	PQtrace(pgsql_conn(L, 1), *fp);
 	return 0;
 }
 
