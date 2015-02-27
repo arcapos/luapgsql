@@ -30,7 +30,7 @@
 #ifdef __APPLE__
 #include <libkern/OSByteOrder.h>
 #define htobe64(x) OSSwapHostToBigInt64(x)
-#else
+#elif __linux__
 #include <endian.h>
 #endif
 #include <stdlib.h>
