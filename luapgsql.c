@@ -1030,6 +1030,23 @@ conn_setErrorVerbosity(lua_State *L)
 	return 1;
 }
 
+static int
+conn_trace(lua_State *L)
+{
+	FILE **fp;
+
+	fp = luaL_checkudata(L, 2, LUA_FILEHANDLE);
+	PQtrace(pgsql_conn(L, 1), *fp);
+	return 0;
+}
+
+static int
+conn_untrace(lua_State *L)
+{
+	PQuntrace(pgsql_conn(L, 1));
+	return 0;
+}
+
 /*
  * Miscellaneous Functions
  */
@@ -1629,7 +1646,7 @@ pgsql_set_info(lua_State *L)
 	lua_pushliteral(L, "PostgreSQL binding for Lua");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "pgsql 1.4.3");
+	lua_pushliteral(L, "pgsql 1.4.4");
 	lua_settable(L, -3);
 }
 
@@ -1716,6 +1733,8 @@ luaopen_pgsql(lua_State *L)
 		{ "clientEncoding", conn_clientEncoding },
 		{ "setClientEncoding", conn_setClientEncoding },
 		{ "setErrorVerbosity", conn_setErrorVerbosity },
+		{ "trace", conn_trace },
+		{ "untrace", conn_untrace },
 
 		/* Miscellaneous Functions */
 		{ "consumeInput", conn_consumeInput },
