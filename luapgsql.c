@@ -1036,7 +1036,8 @@ conn_trace(lua_State *L)
 	FILE **fp;
 
 	fp = luaL_checkudata(L, 2, LUA_FILEHANDLE);
-	PQtrace(pgsql_conn(L, 1), *fp);
+	if (*fp)
+		PQtrace(pgsql_conn(L, 1), *fp);
 	return 0;
 }
 
