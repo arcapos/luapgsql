@@ -355,7 +355,7 @@ get_sql_params(lua_State *L, int t, int n, Oid *paramTypes, char **paramValues,
 		if (paramTypes != NULL)
 #if LUA_VERSION_NUM >= 503
 			if (lua_isinteger(L, t))
-				paramType[n] = INT8OID;
+				paramTypes[n] = INT8OID;
 			else
 #endif
 				paramTypes[n] = FLOAT8OID;
