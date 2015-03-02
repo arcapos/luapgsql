@@ -47,6 +47,17 @@
 
 #include "luapgsql.h"
 
+static PGconn **
+pgsql_conn_new(lua_State *L) {
+	PGconn **data;
+
+	data = lua_newuserdata(L, sizeof(PGconn *));
+	*data = NULL;
+	luaL_getmetatable(L, CONN_METATABLE);
+	lua_setmetatable(L, -2);
+	return data;
+}
+
 /*
  * Database Connection Control Functions
  */
@@ -55,12 +66,9 @@ pgsql_connectdb(lua_State *L)
 {
 	PGconn **data;
 
-	data = (PGconn **)lua_newuserdata(L, sizeof(PGconn *));
+	data = pgsql_conn_new(L);
 	*data = PQconnectdb(luaL_checkstring(L, 1));
-	if (*data != NULL) {
-		luaL_getmetatable(L, CONN_METATABLE);
-		lua_setmetatable(L, -2);
-	} else
+	if (*data == NULL)
 		lua_pushnil(L);
 	return 1;
 }
@@ -70,12 +78,9 @@ pgsql_connectStart(lua_State *L)
 {
 	PGconn **data;
 
-	data = (PGconn **)lua_newuserdata(L, sizeof(PGconn *));
+	data = pgsql_conn_new(L);
 	*data = PQconnectStart(luaL_checkstring(L, 1));
-	if (*data != NULL) {
-		luaL_getmetatable(L, CONN_METATABLE);
-		lua_setmetatable(L, -2);
-	} else
+	if (*data == NULL)
 		lua_pushnil(L);
 	return 1;
 }
