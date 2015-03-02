@@ -1046,11 +1046,20 @@ conn_setErrorVerbosity(lua_State *L)
 static int
 conn_trace(lua_State *L)
 {
+	PGconn *conn;
 	FILE **fp;
 
+	conn = pgsql_conn(L, 1);
 	fp = luaL_checkudata(L, 2, LUA_FILEHANDLE);
 	luaL_argcheck(L, *fp != NULL, 2, "invalid file handle");
-	PQtrace(pgsql_conn(L, 1), *fp);
+
+	/* keep a reference to the file object in uservalue of connection
+	   so it doesn't get garbage collected */
+	lua_getuservalue(L, 1);
+	lua_pushvalue(L, 2);
+	lua_setfield(L, -2, "trace_file");
+
+	PQtrace(conn, *fp);
 	return 0;
 }
 
@@ -1058,6 +1067,12 @@ static int
 conn_untrace(lua_State *L)
 {
 	PQuntrace(pgsql_conn(L, 1));
+
+	/* let go of PGconn's reference to file handle */
+	lua_getuservalue(L, 1);
+	lua_pushnil(L);
+	lua_setfield(L, -2, "trace_file");
+
 	return 0;
 }
 
