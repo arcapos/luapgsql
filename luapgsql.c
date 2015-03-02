@@ -47,12 +47,20 @@
 
 #include "luapgsql.h"
 
+
+#if LUA_VERSION_NUM < 502
+	#define lua_setuservalue lua_setfenv
+	#define lua_getuservalue lua_getfenv
+#endif
+
 static PGconn **
 pgsql_conn_new(lua_State *L) {
 	PGconn **data;
 
 	data = lua_newuserdata(L, sizeof(PGconn *));
 	*data = NULL;
+	lua_newtable(L);
+	lua_setuservalue(L, -2);
 	luaL_getmetatable(L, CONN_METATABLE);
 	lua_setmetatable(L, -2);
 	return data;
