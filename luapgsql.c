@@ -174,6 +174,10 @@ conn_finish(lua_State *L)
 		if (lua_isnil(L, -1)) {
 			PQfinish(*conn);
 			*conn = NULL;
+			/* clean out now invalidated keys from uservalue */
+			lua_getuservalue(L, 1);
+			lua_pushnil(L);
+			lua_setfield(L, -2, "trace_file");
 		} else
 			lua_pop(L, 1);
 	}
