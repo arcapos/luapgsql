@@ -47,6 +47,25 @@
 
 #include "luapgsql.h"
 
+
+#if LUA_VERSION_NUM < 502
+	#define lua_setuservalue lua_setfenv
+	#define lua_getuservalue lua_getfenv
+#endif
+
+static PGconn **
+pgsql_conn_new(lua_State *L) {
+	PGconn **data;
+
+	data = lua_newuserdata(L, sizeof(PGconn *));
+	*data = NULL;
+	lua_newtable(L);
+	lua_setuservalue(L, -2);
+	luaL_getmetatable(L, CONN_METATABLE);
+	lua_setmetatable(L, -2);
+	return data;
+}
+
 /*
  * Database Connection Control Functions
  */
@@ -55,12 +74,9 @@ pgsql_connectdb(lua_State *L)
 {
 	PGconn **data;
 
-	data = (PGconn **)lua_newuserdata(L, sizeof(PGconn *));
+	data = pgsql_conn_new(L);
 	*data = PQconnectdb(luaL_checkstring(L, 1));
-	if (*data != NULL) {
-		luaL_getmetatable(L, CONN_METATABLE);
-		lua_setmetatable(L, -2);
-	} else
+	if (*data == NULL)
 		lua_pushnil(L);
 	return 1;
 }
@@ -70,12 +86,9 @@ pgsql_connectStart(lua_State *L)
 {
 	PGconn **data;
 
-	data = (PGconn **)lua_newuserdata(L, sizeof(PGconn *));
+	data = pgsql_conn_new(L);
 	*data = PQconnectStart(luaL_checkstring(L, 1));
-	if (*data != NULL) {
-		luaL_getmetatable(L, CONN_METATABLE);
-		lua_setmetatable(L, -2);
-	} else
+	if (*data == NULL)
 		lua_pushnil(L);
 	return 1;
 }
@@ -161,6 +174,10 @@ conn_finish(lua_State *L)
 		if (lua_isnil(L, -1)) {
 			PQfinish(*conn);
 			*conn = NULL;
+			/* clean out now invalidated keys from uservalue */
+			lua_getuservalue(L, 1);
+			lua_pushnil(L);
+			lua_setfield(L, -2, "trace_file");
 		} else
 			lua_pop(L, 1);
 	}
@@ -1031,13 +1048,95 @@ conn_setErrorVerbosity(lua_State *L)
 }
 
 static int
+closef_untrace(lua_State *L)
+{
+	PGconn *conn;
+	lua_CFunction cf;
+
+	luaL_checkudata(L, 1, LUA_FILEHANDLE);
+
+	/* untrace so libpq doesn't segfault */
+	lua_getuservalue(L, 1);
+	lua_getfield(L, -1, "PGconn");
+	conn = pgsql_conn(L, -1);
+	lua_getfield(L, -2, "old_uservalue");
+#if LUA_VERSION_NUM >= 502
+	lua_getfield(L, -3, "old_closef");
+#else
+	lua_getfield(L, -1, "__close");
+#endif
+	cf = lua_tocfunction(L, -1);
+	lua_pop(L, 1);
+	lua_setuservalue(L, 1);
+
+	PQuntrace(conn);
+
+	/* let go of PGconn's reference to file handle */
+	lua_getuservalue(L, -1);
+	lua_pushnil(L);
+	lua_setfield(L, -2, "trace_file");
+
+	lua_pop(L, 3); /* pop stream uservalue, PGconn, PGconn uservalue */
+
+	/* call original close function */
+	return (*cf)(L);
+}
+
+static int
 conn_trace(lua_State *L)
 {
+	PGconn *conn;
+#if LUA_VERSION_NUM >= 502
+	luaL_Stream *stream;
+
+	conn = pgsql_conn(L, 1);
+	stream = luaL_checkudata(L, 2, LUA_FILEHANDLE);
+	luaL_argcheck(L, stream->f != NULL, 2, "invalid file handle");
+
+	/* keep a reference to the file object in uservalue of connection
+	   so it doesn't get garbage collected */
+	lua_getuservalue(L, 1);
+	lua_pushvalue(L, 2);
+	lua_setfield(L, -2, "trace_file");
+
+	/* swap out closef luaL_Stream member for our wrapper that will untrace */
+	lua_createtable(L, 0, 3);
+	lua_getuservalue(L, 2);
+	lua_setfield(L, -2, "old_uservalue");
+	lua_pushcfunction(L, stream->closef);
+	lua_setfield(L, -2, "old_closef");
+	lua_pushvalue(L, 1);
+	lua_setfield(L, -2, "PGconn");
+	lua_setuservalue(L, 2);
+	stream->closef = closef_untrace;
+
+	PQtrace(conn, stream->f);
+#else
 	FILE **fp;
 
+	conn = pgsql_conn(L, 1);
 	fp = luaL_checkudata(L, 2, LUA_FILEHANDLE);
 	luaL_argcheck(L, *fp != NULL, 2, "invalid file handle");
-	PQtrace(pgsql_conn(L, 1), *fp);
+
+	/* keep a reference to the file object in uservalue of connection
+	   so it doesn't get garbage collected */
+	lua_getuservalue(L, 1);
+	lua_pushvalue(L, 2);
+	lua_setfield(L, -2, "trace_file");
+
+	/* swap __close field in file environment for our wrapper that will untrace
+	   keep the old closef under the key of the PGconn */
+	lua_createtable(L, 0, 3);
+	lua_pushcfunction(L, closef_untrace);
+	lua_setfield(L, -2, "__close");
+	lua_getuservalue(L, 2);
+	lua_setfield(L, -2, "old_uservalue");
+	lua_pushvalue(L, 1);
+	lua_setfield(L, -2, "PGconn");
+	lua_setuservalue(L, 2);
+
+	PQtrace(conn, *fp);
+#endif
 	return 0;
 }
 
@@ -1045,6 +1144,12 @@ static int
 conn_untrace(lua_State *L)
 {
 	PQuntrace(pgsql_conn(L, 1));
+
+	/* let go of PGconn's reference to file handle */
+	lua_getuservalue(L, 1);
+	lua_pushnil(L);
+	lua_setfield(L, -2, "trace_file");
+
 	return 0;
 }
 
