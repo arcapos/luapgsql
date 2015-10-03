@@ -47,10 +47,9 @@
 
 #include "luapgsql.h"
 
-
 #if LUA_VERSION_NUM < 502
-	#define lua_setuservalue lua_setfenv
-	#define lua_getuservalue lua_getfenv
+#define lua_setuservalue lua_setfenv
+#define lua_getuservalue lua_getfenv
 #endif
 
 static PGconn **
@@ -1076,7 +1075,8 @@ closef_untrace(lua_State *L)
 	lua_pushnil(L);
 	lua_setfield(L, -2, "trace_file");
 
-	lua_pop(L, 3); /* pop stream uservalue, PGconn, PGconn uservalue */
+	/* pop stream uservalue, PGconn, PGconn uservalue */
+	lua_pop(L, 3);
 
 	/* call original close function */
 	return (*cf)(L);
@@ -1093,13 +1093,18 @@ conn_trace(lua_State *L)
 	stream = luaL_checkudata(L, 2, LUA_FILEHANDLE);
 	luaL_argcheck(L, stream->f != NULL, 2, "invalid file handle");
 
-	/* keep a reference to the file object in uservalue of connection
-	   so it doesn't get garbage collected */
+	/*
+	 * Keep a reference to the file object in uservalue of connection
+	 * so it doesn't get garbage collected.
+	 */
 	lua_getuservalue(L, 1);
 	lua_pushvalue(L, 2);
 	lua_setfield(L, -2, "trace_file");
 
-	/* swap out closef luaL_Stream member for our wrapper that will untrace */
+	/*
+	 * Swap out closef luaL_Stream member for our wrapper that will
+	 * untrace.
+	 */
 	lua_createtable(L, 0, 3);
 	lua_getuservalue(L, 2);
 	lua_setfield(L, -2, "old_uservalue");
@@ -1118,14 +1123,18 @@ conn_trace(lua_State *L)
 	fp = luaL_checkudata(L, 2, LUA_FILEHANDLE);
 	luaL_argcheck(L, *fp != NULL, 2, "invalid file handle");
 
-	/* keep a reference to the file object in uservalue of connection
-	   so it doesn't get garbage collected */
+	/*
+	 * Keep a reference to the file object in uservalue of connection
+	 * so it doesn't get garbage collected.
+	 */
 	lua_getuservalue(L, 1);
 	lua_pushvalue(L, 2);
 	lua_setfield(L, -2, "trace_file");
 
-	/* swap __close field in file environment for our wrapper that will untrace
-	   keep the old closef under the key of the PGconn */
+	/*
+	 * Swap __close field in file environment for our wrapper that will
+	 * untrace keep the old closef under the key of the PGconn.
+	 */
 	lua_createtable(L, 0, 3);
 	lua_pushcfunction(L, closef_untrace);
 	lua_setfield(L, -2, "__close");
@@ -1145,7 +1154,7 @@ conn_untrace(lua_State *L)
 {
 	PQuntrace(pgsql_conn(L, 1));
 
-	/* let go of PGconn's reference to file handle */
+	/* Let go of PGconn's reference to file handle. */
 	lua_getuservalue(L, 1);
 	lua_pushnil(L);
 	lua_setfield(L, -2, "trace_file");
