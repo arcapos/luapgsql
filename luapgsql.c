@@ -1761,7 +1761,7 @@ pgsql_set_info(lua_State *L)
 	lua_pushliteral(L, "PostgreSQL binding for Lua");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "pgsql 1.4.4");
+	lua_pushliteral(L, "pgsql 1.4.5");
 	lua_settable(L, -3);
 }
 
@@ -1950,6 +1950,10 @@ luaopen_pgsql(lua_State *L)
 
 		lua_pushliteral(L, "__index");
 		lua_pushvalue(L, -2);
+		lua_settable(L, -3);
+
+		lua_pushliteral(L, "__len");
+		lua_pushcfunction(L, res_ntuples);
 		lua_settable(L, -3);
 
 		lua_pushliteral(L, "__metatable");
