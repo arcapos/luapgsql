@@ -11,7 +11,7 @@ LDADD+=		-L/usr/lib -lpq
 LIBDIR=		/usr/lib
 LUADIR=		/usr/lib/lua/${LUAVER}
 
-${LIB}.so:	${SRCS:.c=.o}
+${LIB}.so:	${SRCS:.c=.o} luapgsql.h
 		cc -shared -o ${LIB}.so ${CFLAGS} ${SRCS:.c=.o} ${LDADD}
 
 clean:

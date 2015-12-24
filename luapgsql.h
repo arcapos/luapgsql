@@ -32,6 +32,7 @@
 
 #define CONN_METATABLE		"pgsql connection methods"
 #define RES_METATABLE		"pgsql result methods"
+#define TUPLE_METATABLE		"pgsql tuple methods"
 #define NOTIFY_METATABLE	"pgsql asychronous notification methods"
 #define LO_METATABLE		"pgsql large object methods"
 
@@ -42,8 +43,13 @@
 #define FLOAT8OID		701
 
 typedef struct largeObject {
-	PGconn	*conn;
-	int	 fd;
+	PGconn		*conn;
+	int		 fd;
 } largeObject;
+
+typedef struct tuple {
+	PGresult	*res;
+	int		 row;
+} tuple;
 
 #endif /* __LUAPGSQL_H__ */

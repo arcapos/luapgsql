@@ -1519,6 +1519,122 @@ res_oidStatus(lua_State *L)
 	return 1;
 }
 
+/* Lua specific functions */
+static int
+res_copy(lua_State *L)
+{
+	PGresult *res = *(PGresult **)luaL_checkudata(L, 1, RES_METATABLE);
+	int row, col;
+
+	lua_newtable(L);
+	for (row = 0; row < PQntuples(res); row++) {
+		lua_pushinteger(L, row + 1);
+		lua_newtable(L);
+		for (col = 0; col < PQnfields(res); col++) {
+			lua_pushstring(L, PQgetvalue(res, row, col));
+			lua_setfield(L, -2, PQfname(res, col));
+		}
+		lua_settable(L, -3);
+	}
+	return 1;
+}
+
+
+static int
+res_fields_iterator(lua_State *L)
+{
+	tuple *t = luaL_checkudata(L, 1, TUPLE_METATABLE);
+	int n;
+
+	t->row++;
+
+	if (t->row == PQntuples(t->res))
+		for (n = 0; n < PQnfields(t->res); n++)
+			lua_pushnil(L);
+	else
+		for (n = 0; n < PQnfields(t->res); n++)
+			lua_pushstring(L, PQgetvalue(t->res, t->row, n));
+	return PQnfields(t->res);
+}
+
+static int
+res_fields(lua_State *L)
+{
+	tuple *t;
+
+	lua_pushcfunction(L, res_fields_iterator);
+	t = lua_newuserdata(L, sizeof(tuple));
+	t->res = *(PGresult **)luaL_checkudata(L, 1, RES_METATABLE);
+	t->row = -1;
+	luaL_getmetatable(L, TUPLE_METATABLE);
+	lua_setmetatable(L, -2);
+	return 2;
+}
+
+static int
+res_tuples_iterator(lua_State *L)
+{
+	tuple *t = luaL_checkudata(L, 1, TUPLE_METATABLE);
+
+	t->row++;
+
+	if (t->row == PQntuples(t->res)) {
+		lua_pushnil(L);
+		lua_pushnil(L);
+	} else {
+		lua_pushvalue(L, 1);
+		lua_pushinteger(L, t->row + 1);
+	}
+	return 2;
+}
+
+static int
+res_tuples(lua_State *L)
+{
+	tuple *t;
+
+	lua_pushcfunction(L, res_tuples_iterator);
+	t = lua_newuserdata(L, sizeof(tuple));
+	t->res = *(PGresult **)luaL_checkudata(L, 1, RES_METATABLE);
+	t->row = -1;
+	luaL_getmetatable(L, TUPLE_METATABLE);
+	lua_setmetatable(L, -2);
+	return 2;
+}
+
+static int
+res_index(lua_State *L)
+{
+	if (lua_type(L, -1) == LUA_TNUMBER) {
+		tuple *t;
+		PGresult *res;
+		int row;
+
+		res = *(PGresult **)luaL_checkudata(L, 1, RES_METATABLE);
+		row = luaL_checkinteger(L, 2) - 1;
+
+		if (row < 0 || row > PQntuples(res))
+			lua_pushnil(L);
+		else {
+			t = lua_newuserdata(L, sizeof(tuple));
+			t->res = res;
+			t->row = row;
+			luaL_getmetatable(L, TUPLE_METATABLE);
+			lua_setmetatable(L, -2);
+		}
+	} else {
+		const char *nam;
+
+		nam = lua_tostring(L, -1);
+		if (lua_getmetatable(L, -2)) {
+			lua_pushstring(L, nam);
+			lua_rawget(L, -2);
+		} else
+			lua_pushnil(L);
+	}
+	return 1;
+}
+
 static int
 res_clear(lua_State *L)
 {
@@ -1666,6 +1782,40 @@ pgsql_lo_clear(lua_State *L)
 }
 
 /*
+ * Tuple and value functions
+ */
+
+static int
+tuple_index(lua_State *L)
+{
+	tuple *t = luaL_checkudata(L, 1, TUPLE_METATABLE);
+
+	switch (lua_type(L, 2)) {
+	case LUA_TNUMBER:
+		lua_pushstring(L,
+		    PQgetvalue(t->res, t->row, lua_tointeger(L, 2) - 1));
+		break;
+	case LUA_TSTRING:
+		lua_pushstring(L,
+		    PQgetvalue(t->res, t->row,
+		    PQfnumber(t->res, lua_tostring(L, 2))));
+		break;
+	default:
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+static int
+tuple_length(lua_State *L)
+{
+	tuple *t = luaL_checkudata(L, 1, TUPLE_METATABLE);
+
+	lua_pushinteger(L, PQnfields(t->res));
+	return 1;
+}
+
+/*
  * Module definitions, constants etc.
  */
 struct constant {
@@ -1761,7 +1911,7 @@ pgsql_set_info(lua_State *L)
 	lua_pushliteral(L, "PostgreSQL binding for Lua");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "pgsql 1.4.5");
+	lua_pushliteral(L, "pgsql 1.4.6");
 	lua_settable(L, -3);
 }
 
@@ -1900,6 +2050,11 @@ luaopen_pgsql(lua_State *L)
 		{ "cmdTuples", res_cmdTuples },
 		{ "oidValue", res_oidValue },
 		{ "oidStatus", res_oidStatus },
+
+		/* Lua specific extension */
+		{ "copy", res_copy },
+		{ "fields", res_fields },
+		{ "tuples", res_tuples },
 		{ NULL, NULL }
 	};
 	struct luaL_Reg notify_methods[] = {
@@ -1917,7 +2072,6 @@ luaopen_pgsql(lua_State *L)
 		{ "close", pgsql_lo_close },
 		{ NULL, NULL }
 	};
-
 	if (luaL_newmetatable(L, CONN_METATABLE)) {
 #if LUA_VERSION_NUM >= 502
 		luaL_setfuncs(L, conn_methods, 0);
@@ -1949,7 +2103,7 @@ luaopen_pgsql(lua_State *L)
 		lua_settable(L, -3);
 
 		lua_pushliteral(L, "__index");
-		lua_pushvalue(L, -2);
+		lua_pushcfunction(L, res_index);
 		lua_settable(L, -3);
 
 		lua_pushliteral(L, "__len");
@@ -2001,6 +2155,22 @@ luaopen_pgsql(lua_State *L)
 		lua_settable(L, -3);
 	}
 	lua_pop(L, 1);
+
+	if (luaL_newmetatable(L, TUPLE_METATABLE)) {
+		lua_pushliteral(L, "__index");
+		lua_pushcfunction(L, tuple_index);
+		lua_settable(L, -3);
+
+		lua_pushliteral(L, "__len");
+		lua_pushcfunction(L, tuple_length);
+		lua_settable(L, -3);
+
+		lua_pushliteral(L, "__metatable");
+		lua_pushliteral(L, "must not access this metatable");
+		lua_settable(L, -3);
+	}
+	lua_pop(L, 1);
+
 #if LUA_VERSION_NUM >= 502
 	luaL_newlib(L, luapgsql);
 #else
