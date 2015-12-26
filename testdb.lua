@@ -9,16 +9,20 @@ else
 end
 
 local res = conn:exec([[
-select rolname, rolsuper from pg_roles order by rolname limit 1
+select rolname, rolsuper from pg_roles order by rolname limit 2
 ]])
 
 print(#res, 'roles')
 
 print(res:ntuples(), res['ntuples'](res), res[1].rolname, res[1][1])
 
-local res2 = conn:exec("select 'abc' as getisnull")
+local res2 = conn:exec("select 'abc' as name, 'def' as surname")
 
-print(res2[1].getisnull, res2[1][1])
+print(res2[1][1], res2[1][2], res2[1][3])
+
+print(res2[3])
+
+print(res2[1].getisnull, res2[1][1], res2[1]:getisnull('name'))
 
 for tuple, row in res:tuples() do
 	print(row, #tuple, tuple[1], tuple.rolname)

@@ -1786,19 +1786,98 @@ pgsql_lo_clear(lua_State *L)
  */
 
 static int
-tuple_index(lua_State *L)
+tuple_getisnull(lua_State *L)
 {
 	tuple *t = luaL_checkudata(L, 1, TUPLE_METATABLE);
+	const char *fnam;
+	int fnumber;
 
 	switch (lua_type(L, 2)) {
 	case LUA_TNUMBER:
-		lua_pushstring(L,
-		    PQgetvalue(t->res, t->row, lua_tointeger(L, 2) - 1));
+		fnumber = lua_tointeger(L, 2) - 1;
+		if (fnumber < 0 || fnumber >= PQnfields(t->res))
+			lua_pushnil(L);
+		else
+			lua_pushboolean(L, PQgetisnull(t->res, t->row,
+			    lua_tointeger(L, 2) - 1));
 		break;
 	case LUA_TSTRING:
-		lua_pushstring(L,
-		    PQgetvalue(t->res, t->row,
-		    PQfnumber(t->res, lua_tostring(L, 2))));
+		fnam = lua_tostring(L, 2);
+		fnumber = PQfnumber(t->res, fnam);
+
+		if (fnumber == -1)
+			lua_pushnil(L);
+		else
+			lua_pushboolean(L, PQgetisnull(t->res, t->row,
+			    PQfnumber(t->res, lua_tostring(L, 2))));
+		break;
+	default:
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+static int
+tuple_getlength(lua_State *L)
+{
+	tuple *t = luaL_checkudata(L, 1, TUPLE_METATABLE);
+	const char *fnam;
+	int fnumber;
+
+	switch (lua_type(L, 2)) {
+	case LUA_TNUMBER:
+		fnumber = lua_tointeger(L, 2) - 1;
+		if (fnumber < 0 || fnumber >= PQnfields(t->res))
+			lua_pushnil(L);
+		else
+			lua_pushinteger(L, PQgetlength(t->res, t->row,
+			    lua_tointeger(L, 2) - 1));
+		break;
+	case LUA_TSTRING:
+		fnam = lua_tostring(L, 2);
+		fnumber = PQfnumber(t->res, fnam);
+
+		if (fnumber == -1)
+			lua_pushnil(L);
+		else
+			lua_pushinteger(L, PQgetlength(t->res, t->row,
+			    PQfnumber(t->res, lua_tostring(L, 2))));
+		break;
+	default:
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+static int
+tuple_index(lua_State *L)
+{
+	tuple *t = luaL_checkudata(L, 1, TUPLE_METATABLE);
+	const char *fnam;
+	int fnumber;
+
+	switch (lua_type(L, 2)) {
+	case LUA_TNUMBER:
+		fnumber = lua_tointeger(L, 2) - 1;
+		if (fnumber < 0 || fnumber >= PQnfields(t->res))
+			lua_pushnil(L);
+		else
+			lua_pushstring(L, PQgetvalue(t->res, t->row, fnumber));
+		break;
+	case LUA_TSTRING:
+		fnam = lua_tostring(L, 2);
+		fnumber = PQfnumber(t->res, fnam);
+
+		if (fnumber == -1) {
+			if (!strcmp(fnam, "getisnull"))
+				lua_pushcfunction(L, tuple_getisnull);
+			else if (!strcmp(fnam, "getlength"))
+				lua_pushcfunction(L, tuple_getlength);
+			else
+				lua_pushnil(L);
+		} else
+			lua_pushstring(L, PQgetvalue(t->res, t->row,
+			    PQfnumber(t->res, fnam)));
 		break;
 	default:
 		lua_pushnil(L);
