@@ -33,6 +33,7 @@
 #define CONN_METATABLE		"pgsql connection methods"
 #define RES_METATABLE		"pgsql result methods"
 #define TUPLE_METATABLE		"pgsql tuple methods"
+#define FIELD_METATABLE		"pgsql tuple field methods"
 #define NOTIFY_METATABLE	"pgsql asychronous notification methods"
 #define LO_METATABLE		"pgsql large object methods"
 
@@ -51,5 +52,10 @@ typedef struct tuple {
 	PGresult	*res;
 	int		 row;
 } tuple;
+
+typedef struct field {
+	tuple		*tuple;
+	int		 col;
+} field;
 
 #endif /* __LUAPGSQL_H__ */

@@ -1786,6 +1786,39 @@ pgsql_lo_clear(lua_State *L)
  */
 
 static int
+field_iterator(lua_State *L)
+{
+	field *f = luaL_checkudata(L, 1, FIELD_METATABLE);
+
+	f->col++;
+
+	if (f->col == PQnfields(f->tuple->res)) {
+		lua_pushnil(L);
+		lua_pushnil(L);
+	} else {
+		lua_pushstring(L, PQfname(f->tuple->res, f->col));
+		lua_pushstring(L,
+		    PQgetvalue(f->tuple->res, f->tuple->row, f->col));
+	}
+	return 2;
+}
+
+static int
+tuple_getfields(lua_State *L)
+{
+	tuple *t = luaL_checkudata(L, 1, TUPLE_METATABLE);
+	field *f;
+
+	lua_pushcfunction(L, field_iterator);
+	f = lua_newuserdata(L, sizeof(field));
+	f->tuple = t;
+	f->col = -1;
+	luaL_getmetatable(L, FIELD_METATABLE);
+	lua_setmetatable(L, -2);
+	return 2;
+}
+
+static int
 tuple_getisnull(lua_State *L)
 {
 	tuple *t = luaL_checkudata(L, 1, TUPLE_METATABLE);
@@ -1869,7 +1902,9 @@ tuple_index(lua_State *L)
 		fnumber = PQfnumber(t->res, fnam);
 
 		if (fnumber == -1) {
-			if (!strcmp(fnam, "getisnull"))
+			if (!strcmp(fnam, "getfields"))
+				lua_pushcfunction(L, tuple_getfields);
+			else if (!strcmp(fnam, "getisnull"))
 				lua_pushcfunction(L, tuple_getisnull);
 			else if (!strcmp(fnam, "getlength"))
 				lua_pushcfunction(L, tuple_getlength);
@@ -1990,7 +2025,7 @@ pgsql_set_info(lua_State *L)
 	lua_pushliteral(L, "PostgreSQL binding for Lua");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "pgsql 1.4.6");
+	lua_pushliteral(L, "pgsql 1.4.7");
 	lua_settable(L, -3);
 }
 
@@ -2244,6 +2279,13 @@ luaopen_pgsql(lua_State *L)
 		lua_pushcfunction(L, tuple_length);
 		lua_settable(L, -3);
 
+		lua_pushliteral(L, "__metatable");
+		lua_pushliteral(L, "must not access this metatable");
+		lua_settable(L, -3);
+	}
+	lua_pop(L, 1);
+
+	if (luaL_newmetatable(L, FIELD_METATABLE)) {
 		lua_pushliteral(L, "__metatable");
 		lua_pushliteral(L, "must not access this metatable");
 		lua_settable(L, -3);
