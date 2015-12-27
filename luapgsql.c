@@ -1539,7 +1539,6 @@ res_copy(lua_State *L)
 	return 1;
 }
 
-
 static int
 res_fields_iterator(lua_State *L)
 {
@@ -1784,6 +1783,19 @@ pgsql_lo_clear(lua_State *L)
 /*
  * Tuple and value functions
  */
+static int
+tuple_copy(lua_State *L)
+{
+	tuple *t = luaL_checkudata(L, 1, TUPLE_METATABLE);
+	int col;
+
+	lua_newtable(L);
+	for (col = 0; col < PQnfields(t->res); col++) {
+		lua_pushstring(L, PQgetvalue(t->res, t->row, col));
+		lua_setfield(L, -2, PQfname(t->res, col));
+	}
+	return 1;
+}
 
 static int
 field_iterator(lua_State *L)
@@ -1902,7 +1914,9 @@ tuple_index(lua_State *L)
 		fnumber = PQfnumber(t->res, fnam);
 
 		if (fnumber == -1) {
-			if (!strcmp(fnam, "getfields"))
+			if (!strcmp(fnam, "copy"))
+				lua_pushcfunction(L, tuple_copy);
+			else if (!strcmp(fnam, "getfields"))
 				lua_pushcfunction(L, tuple_getfields);
 			else if (!strcmp(fnam, "getisnull"))
 				lua_pushcfunction(L, tuple_getisnull);
@@ -2025,7 +2039,7 @@ pgsql_set_info(lua_State *L)
 	lua_pushliteral(L, "PostgreSQL binding for Lua");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "pgsql 1.4.7");
+	lua_pushliteral(L, "pgsql 1.4.8");
 	lua_settable(L, -3);
 }
 
