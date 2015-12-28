@@ -332,6 +332,39 @@ conn_connectionUsedPassword(lua_State *L)
 	return 1;
 }
 
+#if PG_VERSION_NUM >= 90500
+static int
+conn_sslInUse(lua_State *L)
+{
+	lua_pushboolean(L, PQsslInUse(pgsql_conn(L, 1)));
+	return 1;
+}
+
+static int
+conn_sslAttribute(lua_State *L)
+{
+	lua_pushstring(L,
+		PQsslAttribute(pgsql_conn(L, 1), luaL_checkstring(L, 2));
+	return 1;
+}
+
+static int
+conn_sslAttributeNames(lua_State *L)
+{
+	const char * const *attribNames;
+	int k;
+
+	attribNames = PQsslAttributeNames(pgsql_conn(L, 1));
+	lua_newtable(L);
+	for (k = 1; *attribNames; k++, attribNames++) {
+		lua_pushinteger(L, k);
+		lua_pushstring(L, *attribNames);
+		lua_settable(L, -3);
+	}
+	return 1;
+}
+#endif
+
 /*
  * Command Execution Functions
  */
@@ -1973,6 +2006,7 @@ static struct constant pgsql_constant[] = {
 	{ "PGRES_COPY_IN",		PGRES_COPY_IN },
 #if PG_VERSION_NUM >= 90100
 	{ "PGRES_COPY_BOTH",		PGRES_COPY_BOTH },
+	{ "PGRES_SINGLE_TUPLE",		PGRES_SINGLE_TUPLE },
 #endif
 	{ "PGRES_BAD_RESPONSE",		PGRES_BAD_RESPONSE },
 	{ "PGRES_NONFATAL_ERROR",	PGRES_NONFATAL_ERROR },
@@ -2039,7 +2073,7 @@ pgsql_set_info(lua_State *L)
 	lua_pushliteral(L, "PostgreSQL binding for Lua");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "pgsql 1.4.8");
+	lua_pushliteral(L, "pgsql 1.4.9");
 	lua_settable(L, -3);
 }
 
@@ -2085,6 +2119,11 @@ luaopen_pgsql(lua_State *L)
 		{ "backendPID", conn_backendPID },
 		{ "connectionNeedsPassword", conn_connectionNeedsPassword },
 		{ "connectionUsedPassword", conn_connectionUsedPassword },
+#if PG_VERSION_NUM >= 90500
+		{ "sslInUse", conn_sslInUse },
+		{ "sslAttribute", conn_sslAttribute },
+		{ "sslAttributeNames", conn_sslAttributeNames },
+#endif
 
 		/* Command Execution Functions */
 		{ "escapeString", conn_escapeString },
