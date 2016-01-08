@@ -344,7 +344,7 @@ static int
 conn_sslAttribute(lua_State *L)
 {
 	lua_pushstring(L,
-		PQsslAttribute(pgsql_conn(L, 1), luaL_checkstring(L, 2));
+		PQsslAttribute(pgsql_conn(L, 1), luaL_checkstring(L, 2)));
 	return 1;
 }
 
