@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009 - 2015, Micro Systems Marc Balmer, CH-5073 Gipf-Oberfrick
+ * Copyright (c) 2009 - 2016, Micro Systems Marc Balmer, CH-5073 Gipf-Oberfrick
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -138,6 +138,13 @@ pgsql_encryptPassword(lua_State *L)
 	} else
 		lua_pushnil(L);
 	return 1;
+}
+
+static int
+pgsql_initOpenSSL(lua_State *L)
+{
+	PQinitOpenSSL(lua_toboolean(L, 1), lua_toboolean(L, 2));
+	return 0;
 }
 
 static int
@@ -2066,14 +2073,14 @@ static void
 pgsql_set_info(lua_State *L)
 {
 	lua_pushliteral(L, "_COPYRIGHT");
-	lua_pushliteral(L, "Copyright (C) 2009 - 2015 by "
+	lua_pushliteral(L, "Copyright (C) 2009 - 2016 by "
 	    "micro systems marc balmer");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_DESCRIPTION");
 	lua_pushliteral(L, "PostgreSQL binding for Lua");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "pgsql 1.4.9");
+	lua_pushliteral(L, "pgsql 1.4.10");
 	lua_settable(L, -3);
 }
 
@@ -2090,6 +2097,9 @@ luaopen_pgsql(lua_State *L)
 		{ "ping", pgsql_ping },
 #endif
 		{ "encryptPassword", pgsql_encryptPassword },
+
+		/* SSL support */
+		{ "initOpenSSL", pgsql_initOpenSSL },
 		{ NULL, NULL }
 	};
 
