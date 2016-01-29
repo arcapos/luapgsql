@@ -408,13 +408,14 @@ get_sql_params(lua_State *L, int t, int n, Oid *paramTypes, char **paramValues,
 		n = 1;
 		break;
 	case LUA_TNUMBER:
-		if (paramTypes != NULL)
+		if (paramTypes != NULL) {
 #if LUA_VERSION_NUM >= 503
 			if (lua_isinteger(L, t))
 				paramTypes[n] = INT8OID;
 			else
 #endif
 				paramTypes[n] = FLOAT8OID;
+		}
 		if (paramValues != NULL) {
 			union {
 				double v;
