@@ -4,37 +4,30 @@ Accessing PostgreSQL Databases
 The pgsql module
 ----------------
 
-The pgsql is module is used to access PostgreSQL databases. It is a Lua
-binding to libpq, the PostgreSQL C language interface and offers more or
-less the same functionality.
+The pgsql is module is used to access PostgreSQL databases from Lua
+code. It is a Lua binding to libpq, the PostgreSQL C language interface
+and offers more or less the same functionality.
 
 Most of the text in this manual has been adapted from the original libpq
-documentation, which is published under the following license:
-
+documentation, which is published under the following license:\
 PostgreSQL is released under the PostgreSQL License, a liberal Open
-Source license, similar to the BSD or MIT licenses.
-
-PostgreSQL Database Management System
-
-(formerly known as Postgres, then as Postgres95)
-
+Source license, similar to the BSD or MIT licenses.\
+PostgreSQL Database Management System\
+(formerly known as Postgres, then as Postgres95)\
 Portions Copyright (c) 1996-2014, The PostgreSQL Global Development
-Group
-
-Portions Copyright (c) 1994, The Regents of the University of California
-
+Group\
+Portions Copyright (c) 1994, The Regents of the University of
+California\
 Permission to use, copy, modify, and distribute this software and its
 documentation for any purpose, without fee, and without a written
 agreement is hereby granted, provided that the above copyright notice
 and this paragraph and the following two paragraphs appear in all
-copies.
-
+copies.\
 IN NO EVENT SHALL THE UNIVERSITY OF CALIFORNIA BE LIABLE TO ANY PARTY
 FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
 INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
 DOCUMENTATION, EVEN IF THE UNIVERSITY OF CALIFORNIA HAS BEEN ADVISED OF
-THE POSSIBILITY OF SUCH DAMAGE.
-
+THE POSSIBILITY OF SUCH DAMAGE.\
 THE UNIVERSITY OF CALIFORNIA SPECIFICALLY DISCLAIMS ANY WARRANTIES,
 INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
 AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
@@ -241,7 +234,7 @@ consist of multiple lines, and will include a trailing newline.
 
 Obtains the file descriptor number of the connection socket to the
 server. A valid descriptor will be greater than or equal to 0; a result
-of -1 indicates that no server connection is currently open. (This will
+of nil indicates that no server connection is currently open. (This will
 not change during normal operation, but could change during connection
 setup or reset.)
 
@@ -265,8 +258,8 @@ whether to prompt the user for a password.
 
 ### conn:connectionUsedPassword()
 
-Returns true (1) if the connection authentication method used a
-password. Returns false (0) if not.
+Returns true if the connection authentication method used a password.
+Returns false if not.
 
 This function can be applied after either a failed or successful
 connection attempt to detect whether the server demanded a password.
@@ -386,59 +379,30 @@ Result functions
 
 Returns the result status of the command.
 
-PQresultStatus can return one of the following values:
+PQresultStatus can return one of the following values:\
 
-PGRES\_EMPTY\_QUERY
+  ------------------------ ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  PGRES\_EMPTY\_QUERY      The string sent to the server was empty.
+  PGRES\_COMMAND\_OK       Successful completion of a command returning no data.
+  PGRES\_TUPLES\_OK        Successful completion of a command returning data (such as a SELECT or SHOW).
+  PGRES\_COPY\_OUT         Copy Out (from server) data transfer started.
+  PGRES\_COPY\_IN          Copy In (to server) data transfer started.
+  PGRES\_BAD\_RESPONSE     The server’s response was not understood.
+  PGRES\_NONFATAL\_ERROR   A nonfatal error (a notice or warning) occurred.
+  PGRES\_FATAL\_ERROR      A fatal error occurred.
+  PGRES\_COPY\_BOTH        Copy In/Out (to and from server) data transfer started. This feature is currently used only for streaming replication, so this status should not occur in ordinary applications.
+  PGRES\_SINGLE\_TUPLE     The result contains a single result tuple from the current command. This status occurs only when single-row mode has been selected for the query.
+  ------------------------ ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-The string sent to the server was empty.
-
-PGRES\_COMMAND\_OK
-
-Successful completion of a command returning no data.
-
-PGRES\_TUPLES\_OK
-
-Successful completion of a command returning data (such as a SELECT or
-SHOW).
-
-PGRES\_COPY\_OUT
-
-Copy Out (from server) data transfer started.
-
-PGRES\_COPY\_IN
-
-Copy In (to server) data transfer started.
-
-PGRES\_BAD\_RESPONSE
-
-The server’s response was not understood.
-
-PGRES\_NONFATAL\_ERROR
-
-A nonfatal error (a notice or warning) occurred.
-
-PGRES\_FATAL\_ERROR
-
-A fatal error occurred.
-
-PGRES\_COPY\_BOTH
-
-Copy In/Out (to and from server) data transfer started. This feature is
-currently used only for streaming replication, so this status should not
-occur in ordinary applications.
-
-PGRES\_SINGLE\_TUPLE
-
-The result contains a single result tuple from the current command. This
-status occurs only when single-row mode has been selected for the query.
-
+\
 If the result status is PGRES\_TUPLES\_OK or PGRES\_SINGLE\_TUPLE, then
 the functions described below can be used to retrieve the rows returned
 by the query. Note that a SELECT command that happens to retrieve zero
-rows still shows PGRES\_TUPLES\_OK. PGRES\_COMMAND\_OK is for commands
-that can never return rows (INSERT or UPDATE without a RETURNING clause,
-etc.). A response of PGRES\_EMPTY\_QUERY might indicate a bug in the
-client software.
+rows still shows PGRES\_TUPLES\_OK.
+
+PGRES\_COMMAND\_OK is for commands that can never return rows (INSERT or
+UPDATE without a RETURNING clause, etc.). A response of
+PGRES\_EMPTY\_QUERY might indicate a bug in the client software.
 
 A result of status PGRES\_NONFATAL\_ERROR will never be returned
 directly by exec or other query execution functions; results of this
@@ -477,13 +441,13 @@ include a trailing newline.
 
 The following field codes are available:
 
-PG\_DIAG\_SEVERITY
+### PG\_DIAG\_SEVERITY {#pg_diag_severity .unnumbered}
 
 The severity; the field contents are ERROR, FATAL, or PANIC (in an error
 message), or WARNING, NOTICE, DEBUG, INFO, or LOG (in a notice message),
 or a localized translation of one of these. Always present.
 
-PG\_DIAG\_SQLSTATE
+### PG\_DIAG\_SQLSTATE {#pg_diag_sqlstate .unnumbered}
 
 The SQLSTATE code for the error. The SQLSTATE code identifies the type
 of error that has occurred; it can be used by front-end applications to
@@ -491,30 +455,30 @@ perform specific operations (such as error handling) in response to a
 particular database error. For a list of the possible SQLSTATE codes,
 see Appendix A. This field is not localizable, and is always present.
 
-PG\_DIAG\_MESSAGE\_PRIMARY
+### PG\_DIAG\_MESSAGE\_PRIMARY {#pg_diag_message_primary .unnumbered}
 
 The primary human-readable error message (typically one line). Always
 present.
 
-PG\_DIAG\_MESSAGE\_DETAIL
+### PG\_DIAG\_MESSAGE\_DETAIL {#pg_diag_message_detail .unnumbered}
 
 Detail: an optional secondary error message carrying more detail about
 the problem. Might run to multiple lines.
 
-PG\_DIAG\_MESSAGE\_HINT
+### PG\_DIAG\_MESSAGE\_HINT {#pg_diag_message_hint .unnumbered}
 
 Hint: an optional suggestion what to do about the problem. This is
 intended to differ from detail in that it offers advice (potentially
 inappropriate) rather than hard facts. Might run to multiple lines.
 
-PG\_DIAG\_STATEMENT\_POSITION
+### PG\_DIAG\_STATEMENT\_POSITION {#pg_diag_statement_position .unnumbered}
 
 A string containing a decimal integer indicating an error cursor
 position as an index into the original statement string. The first
 character has index 1, and positions are measured in characters not
 bytes.
 
-PG\_DIAG\_INTERNAL\_POSITION
+### PG\_DIAG\_INTERNAL\_POSITION {#pg_diag_internal_position .unnumbered}
 
 This is defined the same as the PG\_DIAG\_STATEMENT\_POSITION field, but
 it is used when the cursor position refers to an internally generated
@@ -522,58 +486,58 @@ command rather than the one submitted by the client. The
 PG\_DIAG\_INTERNAL\_QUERY field will always appear when this field
 appears.
 
-PG\_DIAG\_INTERNAL\_QUERY
+### PG\_DIAG\_INTERNAL\_QUERY {#pg_diag_internal_query .unnumbered}
 
 The text of a failed internally-generated command. This could be, for
 example, a SQL query issued by a PL/pgSQL function.
 
-PG\_DIAG\_CONTEXT
+### PG\_DIAG\_CONTEXT {#pg_diag_context .unnumbered}
 
 An indication of the context in which the error occurred. Presently this
 includes a call stack traceback of active procedural language functions
 and internally-generated queries. The trace is one entry per line, most
 recent first.
 
-PG\_DIAG\_SCHEMA\_NAME
+### PG\_DIAG\_SCHEMA\_NAME {#pg_diag_schema_name .unnumbered}
 
 If the error was associated with a specific database object, the name of
 the schema containing that object, if any.
 
-PG\_DIAG\_TABLE\_NAME
+### PG\_DIAG\_TABLE\_NAME {#pg_diag_table_name .unnumbered}
 
 If the error was associated with a specific table, the name of the
 table. (Refer to the schema name field for the name of the table’s
 schema.)
 
-PG\_DIAG\_COLUMN\_NAME
+### PG\_DIAG\_COLUMN\_NAME {#pg_diag_column_name .unnumbered}
 
 If the error was associated with a specific table column, the name of
 the column. (Refer to the schema and table name fields to identify the
 table.)
 
-PG\_DIAG\_DATATYPE\_NAME
+### PG\_DIAG\_DATATYPE\_NAME {#pg_diag_datatype_name .unnumbered}
 
 If the error was associated with a specific data type, the name of the
 data type. (Refer to the schema name field for the name of the data
 type’s schema.)
 
-PG\_DIAG\_CONSTRAINT\_NAME
+### PG\_DIAG\_CONSTRAINT\_NAME {#pg_diag_constraint_name .unnumbered}
 
 If the error was associated with a specific constraint, the name of the
 constraint. Refer to fields listed above for the associated table or
 domain. (For this purpose, indexes are treated as constraints, even if
 they weren’t created with constraint syntax.)
 
-PG\_DIAG\_SOURCE\_FILE
+### PG\_DIAG\_SOURCE\_FILE {#pg_diag_source_file .unnumbered}
 
 The file name of the source-code location where the error was reported.
 
-PG\_DIAG\_SOURCE\_LINE
+### PG\_DIAG\_SOURCE\_LINE {#pg_diag_source_line .unnumbered}
 
 The line number of the source-code location where the error was
 reported.
 
-PG\_DIAG\_SOURCE\_FUNCTION
+### PG\_DIAG\_SOURCE\_FUNCTION {#pg_diag_source_function .unnumbered}
 
 The name of the source-code function reporting the error.
 
@@ -678,13 +642,13 @@ value indicates the data type is variable-length.
 
 ### res:binaryTuples()
 
-Returns 1 if the result contains binary data and 0 if it contains text
-data.
+Returns true if the result contains binary data and false if it contains
+text data.
 
 This function is deprecated (except for its use in connection with
 COPY), because it is possible for a single result to contain text data
 in some columns and binary data in others. fformat is preferred.
-binaryTuples returns 1 only if all columns of the result are binary
+binaryTuples returns true only if all columns of the result are binary
 (format 1).
 
 ### res:getvalue(rowNumber, columNumber)
@@ -706,8 +670,8 @@ distinguish null values from empty-string values.
 
 Tests a field for a null value. Row and column numbers start at 1.
 
-This function returns 1 if the field is null and 0 if it contains a
-non-null value. (Note that getvalue will return an empty string, not
+This function returns true if the field is null and false if it contains
+a non-null value. (Note that getvalue will return an empty string, not
 nil, for a null field.)
 
 ### res:getlength(rowNumber, columnNumber)
@@ -822,23 +786,23 @@ in the conn object.
 
 ### conn:escapeBytea(str)
 
-<span>Escapes binary data for use within an SQL command with the type
-`bytea`. As with <span>escapeString</span>, this is only used when
-inserting data directly into an SQL command string.</span>
+Escapes binary data for use within an SQL command with the type `bytea`.
+As with <span>escapeString</span>, this is only used when inserting data
+directly into an SQL command string.
 
-<span>Certain byte values must be escaped when used as part of a `bytea`
+Certain byte values must be escaped when used as part of a `bytea`
 literal in an <span>SQL</span> statement. <span>escapeBytea</span>
-escapes bytes using either hex encoding or backslash escaping.</span>
+escapes bytes using either hex encoding or backslash escaping.
 
-<span>On error, nil is returned, and a suitable error message is stored
-in the `conn` object. Currently, the only possible error is insufficient
-memory for the result string.</span>
+On error, nil is returned, and a suitable error message is stored in the
+`conn` object. Currently, the only possible error is insufficient memory
+for the result string.
 
 ### conn:unescapeBytea(str)
 
-<span>Converts a string representation of binary data into binary data —
-the reverse of escapeBytea. This is needed when retrieving bytea data in
-text format, but not when retrieving it in binary format.</span>
+Converts a string representation of binary data into binary data — the
+reverse of escapeBytea. This is needed when retrieving bytea data in
+text format, but not when retrieving it in binary format.
 
 ### Asynchronous command processing
 
@@ -872,9 +836,10 @@ execPrepared, describePrepared, and describePortal respectively.
 
 ### conn:sendQuery(command)
 
-Submits a command to the server without waiting for the result(s). 1 is
-returned if the command was successfully dispatched and 0 if not (in
-which case, use errorMessage to get more information about the failure).
+Submits a command to the server without waiting for the result(s). true
+is returned if the command was successfully dispatched and false if not
+(in which case, use errorMessage to get more information about the
+failure).
 
 After successfully calling sendQuery, call getResult one or more times
 to obtain the results. sendQuery cannot be called again (on the same
@@ -897,11 +862,12 @@ string.
 Sends a request to create a prepared statement with the given
 parameters, without waiting for completion.
 
-This is an asynchronous version of prepare: it returns 1 if it was able
-to dispatch the request, and 0 if not. After a successful call, call
-PQgetResult to determine whether the server successfully created the
-prepared statement. The function’s parameters are handled identically to
-prepare. Like prepare, it will not work on 2.0-protocol connections.
+This is an asynchronous version of prepare: it returns true if it was
+able to dispatch the request, and false if not. After a successful call,
+call PQgetResult to determine whether the server successfully created
+the prepared statement. The function’s parameters are handled
+identically to prepare. Like prepare, it will not work on 2.0-protocol
+connections.
 
 ### conn:sendQueryPrepared(stmtName \[\[, param\] ..\])
 
@@ -919,22 +885,22 @@ connections.
 Submits a request to obtain information about the specified prepared
 statement, without waiting for completion.
 
-This is an asynchronous version of describePrepared: it returns 1 if it
-was able to dispatch the request, and 0 if not. After a successful call,
-call getResult to obtain the results. The function’s parameters are
-handled identically to describePrepared. Like describePrepared, it will
-not work on 2.0-protocol connections.
+This is an asynchronous version of describePrepared: it returns true if
+it was able to dispatch the request, and false if not. After a
+successful call, call getResult to obtain the results. The function’s
+parameters are handled identically to describePrepared. Like
+describePrepared, it will not work on 2.0-protocol connections.
 
 ### conn:sendDescribePortal(portalName)
 
 Submits a request to obtain information about the specified portal,
 without waiting for completion.
 
-This is an asynchronous version of describePortal: it returns 1 if it
-was able to dispatch the request, and 0 if not. After a successful call,
-call getResult to obtain the results. The function’s parameters are
-handled identically to describePortal. Like describePortal, it will not
-work on 2.0-protocol connections.
+This is an asynchronous version of describePortal: it returns true if it
+was able to dispatch the request, and false if not. After a successful
+call, call getResult to obtain the results. The function’s parameters
+are handled identically to describePortal. Like describePortal, it will
+not work on 2.0-protocol connections.
 
 ### conn:getResult()
 
@@ -970,10 +936,10 @@ use of two more functions:
 
 If input is available from the server, consume it.
 
-consumeInput normally returns 1 indicating no error, but returns 0 if
-there was some kind of trouble (in which case errorMessage can be
-consulted). Note that the result does not say whether any input data was
-actually collected. After calling consumeInput, the application can
+consumeInput normally returns true indicating no error, but returns
+false if there was some kind of trouble (in which case errorMessage can
+be consulted). Note that the result does not say whether any input data
+was actually collected. After calling consumeInput, the application can
 check isBusy and/or notifies to see if their state has changed.
 
 consumeInput can be called even if the application is not prepared to
@@ -985,9 +951,9 @@ examine the results at leisure.
 
 ### conn:isBusy()
 
-Returns 1 if a command is busy, that is, getResult would block waiting
-for input. A 0 return indicates that getResult can be called with
-assurance of not blocking.
+Returns true if a command is busy, that is, getResult would block
+waiting for input. A false return indicates that getResult can be called
+with assurance of not blocking.
 
 isBusy will not itself attempt to read data from the server; therefore
 PQconsumeInput must be invoked first, or the busy state will never end.
@@ -998,8 +964,8 @@ respond to. One of the conditions will be input available from the
 server, which in terms of select() means readable data on the file
 descriptor identified by socket. When the main loop detects input ready,
 it should call consumeInput to read the input. It can then call isBusy,
-followed by getResult if isBusy returns false (0). It can also call
-notifies to detect NOTIFY messages.
+followed by getResult if isBusy returns false. It can also call notifies
+to detect NOTIFY messages.
 
 A client that uses sendQuery/getResult can also attempt to cancel a
 command that is still being processed by the server. But regardless of
@@ -1017,12 +983,12 @@ application sends data via COPY IN, however.) To prevent this
 possibility and achieve completely nonblocking database operation, the
 following additional functions can be used.
 
-### conn:setnonblocking()
+### conn:setnonblocking(arg)
 
 Sets the nonblocking status of the connection.
 
-Sets the state of the connection to nonblocking if arg is 1, or blocking
-if arg is 0. Returns 0 if OK, -1 if error.
+Sets the state of the connection to nonblocking if arg is true, or
+blocking if arg is false. Returns true if OK, false if error.
 
 In the nonblocking state, calls to sendQuery, putline, putnbytes, and
 endcopy will not block but instead return an error if they need to be
@@ -1035,21 +1001,21 @@ act in blocking fashion anyway.
 
 Returns the blocking status of the database connection.
 
-Returns 1 if the connection is set to nonblocking mode and 0 if
+Returns true if the connection is set to nonblocking mode and false if
 blocking.
 
 ### conn:flush()
 
-Attempts to flush any queued output data to the server. Returns 0 if
-successful (or if the send queue is empty), -1 if it failed for some
-reason, or 1 if it was unable to send all the data in the send queue yet
-(this case can only occur if the connection is nonblocking).
+Attempts to flush any queued output data to the server. Returns true if
+successful (or if the send queue is empty), nil if it failed for some
+reason, or false if it was unable to send all the data in the send queue
+yet (this case can only occur if the connection is nonblocking).
 
 After sending any command or data on a nonblocking connection, call
-PQflush. If it returns 1, wait for the socket to be write-ready and call
-it again; repeat until it returns 0. Once PQflush returns 0, wait for
-the socket to be read-ready and then read the response as described
-above.
+PQflush. If it returns false, wait for the socket to be write-ready and
+call it again; repeat until it returns true. Once PQflush returns true
+wait for the socket to be read-ready and then read the response as
+described above.
 
 Retrieving Query Results Row-By-Row
 -----------------------------------
@@ -1061,20 +1027,20 @@ applications can use <span>sendQuery</span> and <span>getResult</span>
 in single-row mode. In this mode, the result row(s) are returned to the
 application one at a time, as they are received from the server.
 
-<span>To enter single-row mode, call <span>setSingleRowMode</span>
-immediately after a successful call of <span>sendQuery</span> (or a
-sibling function). This mode selection is effective only for the
-currently executing query. Then call <span>getResult</span> repeatedly,
-until it returns nil. If the query returns any rows, they are returned
-as individual `result` objects, which look like normal query results
-except for having status code `PGRES_SINGLE_TUPLE` instead of
+To enter single-row mode, call <span>setSingleRowMode</span> immediately
+after a successful call of <span>sendQuery</span> (or a sibling
+function). This mode selection is effective only for the currently
+executing query. Then call <span>getResult</span> repeatedly, until it
+returns nil. If the query returns any rows, they are returned as
+individual `result` objects, which look like normal query results except
+for having status code `PGRES_SINGLE_TUPLE` instead of
 `PGRES_TUPLES_OK`. After the last row, or immediately if the query
 returns zero rows, a zero-row object with status `PGRES_TUPLES_OK` is
 returned; this is the signal that no more rows will arrive. (But note
 that it is still necessary to continue calling <span>getResult</span>
 until it returns nil.) All of these `result` objects will contain the
 same row description data (column names, types, etc) that an ordinary
-`result` object for the query would have. </span>
+`result` object for the query would have.
 
 ### conn:setSingleRowMode()
 
@@ -1084,9 +1050,10 @@ This function can only be called immediately after
 <span>sendQuery</span> or one of its sibling functions, before any other
 operation on the connection such as <span>consumeInput</span> or
 <span>getResult</span>. If called at the correct time, the function
-activates single-row mode for the current query and returns 1. Otherwise
-the mode stays unchanged and the function returns 0. In any case, the
-mode reverts to normal after completion of the current query.
+activates single-row mode for the current query and returns true.
+Otherwise the mode stays unchanged and the function returns false. In
+any case, the mode reverts to normal after completion of the current
+query.
 
 Canceling queries in progress
 -----------------------------
@@ -1173,9 +1140,10 @@ Returns the number of columns (fields) to be copied.
 
 ### res:binaryTuples()
 
-0 indicates the overall copy format is textual (rows separated by
-newlines, columns separated by separator characters, etc). 1 indicates
-the overall copy format is binary. See COPY for more information.
+false indicates the overall copy format is textual (rows separated by
+newlines, columns separated by separator characters, etc). true
+indicates the overall copy format is binary. See COPY for more
+information.
 
 ### res:fformat()
 
@@ -1197,10 +1165,10 @@ fail if called when the connection is not in COPY\_IN state.
 Sends data to the server during COPY\_IN state.
 
 Transmits the COPY data in the specified buffer, to the server. The
-result is 1 if the data was sent, zero if it was not sent because the
-attempt would block (this case is only possible if the connection is in
-nonblocking mode), or -1 if an error occurred. (Use errorMessage to
-retrieve details if the return value is -1. If the value is zero, wait
+result is true if the data was sent, false if it was not sent because
+the attempt would block (this case is only possible if the connection is
+in nonblocking mode), or nil if an error occurred. (Use errorMessage to
+retrieve details if the return value is nil. If the value is zero, wait
 for write-ready and try again.)
 
 The application can divide the COPY data stream into buffer loads of any
@@ -1220,10 +1188,10 @@ server might have already failed the COPY for its own reasons. Also note
 that the option to force failure does not work when using
 pre-3.0-protocol connections.)
 
-The result is 1 if the termination data was sent, zero if it was not
+The result is true if the termination data was sent, false if it was not
 sent because the attempt would block (this case is only possible if the
-connection is in nonblocking mode), or -1 if an error occurred. (Use
-PQerrorMessage to retrieve details if the return value is -1. If the
+connection is in nonblocking mode), or nil if an error occurred. (Use
+PQerrorMessage to retrieve details if the return value is nil. If the
 value is zero, wait for write-ready and try again.)
 
 After successfully calling putCopyEnd, call getResult to obtain the
@@ -1297,7 +1265,7 @@ stream obtaining via io.open().
 
 ### conn:untrace()
 
-<span>Disables tracing started by conn:trace().</span>
+Disables tracing started by conn:trace().
 
 Miscellaneous functions
 -----------------------
@@ -1453,11 +1421,11 @@ To export a large object into an operating system file, call
 The lobjId argument specifies the OID of the large object to export and
 the filename argument specifies the operating system name of the file.
 Note that the file is written by the client interface library, not by
-the server. Returns 1 on success, -1 on failure.
+the server. Returns true on success, false on failure.
 
 To open an existing large object for reading or writing, call
 
-### conn:lo\_open(lobjId)
+### conn:lo\_open(lobjId, mode)
 
 The lobjId argument specifies the OID of the large object to open. The
 mode bits control whether the object is opened for reading (INV\_READ),
@@ -1466,7 +1434,7 @@ the PostgreSQL header file libpq/libpq-fs.h.) lo\_open returns a
 (non-negative) large object descriptor for later use in lo:read,
 lo:write, lo:lseek, lo:lseek64, lo:tell, lo:tell64, lo:truncate,
 lo:truncate64, and lo:close. The descriptor is only valid for the
-duration of the current transaction. On failure, -1 is returned.
+duration of the current transaction. On failure, nil is returned.
 
 The server currently does not distinguish between modes INV\_WRITE and
 INV\_READ INV\_WRITE: you are allowed to read from the descriptor in
@@ -1488,7 +1456,7 @@ The function
 
 ### lo:write(buf, len)
 
-writes len bytes from buf (which must be of size len) to large object.
+writes len bytes from buf (which must be of size len) to a large object.
 The number of bytes actually written is returned (in the current
 implementation, this will always equal len unless there is an error). In
 the event of an error, the return value is -1.
