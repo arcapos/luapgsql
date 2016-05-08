@@ -314,7 +314,13 @@ conn_errorMessage(lua_State *L)
 static int
 conn_socket(lua_State *L)
 {
-	lua_pushinteger(L, PQsocket(pgsql_conn(L, 1)));
+	int fd;
+
+	fd = PQsocket(pgsql_conn(L, 1));
+	if (fd >= 0)
+		lua_pushinteger(L, fd);
+	else
+		lua_pushnil(L);
 	return 1;
 }
 
@@ -775,7 +781,7 @@ conn_unescapeBytea(lua_State *L)
 static int
 conn_sendQuery(lua_State *L)
 {
-	lua_pushinteger(L, PQsendQuery(pgsql_conn(L, 1),
+	lua_pushboolean(L, PQsendQuery(pgsql_conn(L, 1),
 	    luaL_checkstring(L, 2)));
 	return 1;
 }
@@ -817,7 +823,7 @@ conn_sendQueryParams(lua_State *L)
 		paramLengths = NULL;
 		paramFormats = NULL;
 	}
-	lua_pushinteger(L,
+	lua_pushboolean(L,
 	    PQsendQueryParams(pgsql_conn(L, 1),
 	    luaL_checkstring(L, 2), sqlParams, paramTypes,
 	    (const char * const*)paramValues, paramLengths, paramFormats, 0));
@@ -871,7 +877,7 @@ conn_sendPrepare(lua_State *L)
 		}
 	} else
 		paramTypes = NULL;
-	lua_pushinteger(L, PQsendPrepare(pgsql_conn(L, 1),
+	lua_pushboolean(L, PQsendPrepare(pgsql_conn(L, 1),
 	    luaL_checkstring(L, 2), luaL_checkstring(L, 3), sqlParams,
 	    paramTypes));
 	if (sqlParams)
@@ -913,7 +919,7 @@ conn_sendQueryPrepared(lua_State *L)
 		paramLengths = NULL;
 		paramFormats = NULL;
 	}
-	lua_pushinteger(L,
+	lua_pushboolean(L,
 	    PQsendQueryPrepared(pgsql_conn(L, 1), luaL_checkstring(L, 2),
 	    nParams, (const char * const*)paramValues, paramLengths,
 	    paramFormats, 0));
@@ -939,7 +945,7 @@ errout:
 static int
 conn_sendDescribePrepared(lua_State *L)
 {
-	lua_pushinteger(L,
+	lua_pushboolean(L,
 	    PQsendDescribePrepared(pgsql_conn(L, 1), luaL_checkstring(L, 2)));
 	return 1;
 }
@@ -947,7 +953,7 @@ conn_sendDescribePrepared(lua_State *L)
 static int
 conn_sendDescribePortal(lua_State *L)
 {
-	lua_pushinteger(L,
+	lua_pushboolean(L,
 	    PQsendDescribePortal(pgsql_conn(L, 1), luaL_checkstring(L, 2)));
 	return 1;
 }
@@ -996,7 +1002,7 @@ conn_cancel(lua_State *L)
 static int
 conn_setSingleRowMode(lua_State *L)
 {
-	lua_pushinteger(L, PQsetSingleRowMode(pgsql_conn(L, 1)));
+	lua_pushboolean(L, PQsetSingleRowMode(pgsql_conn(L, 1)));
 	return 1;
 }
 #endif
@@ -1029,16 +1035,29 @@ conn_putCopyData(lua_State *L)
 {
 	const char *data;
 	size_t len;
+	int r;
 
 	data = luaL_checklstring(L, 2, &len);
-	lua_pushinteger(L, PQputCopyData(pgsql_conn(L, 1), data, len));
+	r = PQputCopyData(pgsql_conn(L, 1), data, len);
+
+	if (r != -1)
+		lua_pushboolean(L, r);
+	else
+		lua_pushnil(L);
 	return 1;
 }
 
 static int
 conn_putCopyEnd(lua_State *L)
 {
-	lua_pushinteger(L, PQputCopyEnd(pgsql_conn(L, 1), NULL));
+	int r;
+
+	r = PQputCopyEnd(pgsql_conn(L, 1), NULL);
+
+	if (r != -1)
+		lua_pushboolean(L, r);
+	else
+		lua_pushnil(L);
 	return 1;
 }
 
@@ -1223,8 +1242,10 @@ conn_isBusy(lua_State *L)
 static int
 conn_setnonblocking(lua_State *L)
 {
-	lua_pushinteger(L,
-	    PQsetnonblocking(pgsql_conn(L, 1), lua_toboolean(L, 2)));
+	int r;
+
+	r = PQsetnonblocking(pgsql_conn(L, 1), lua_toboolean(L, 2));
+	lua_pushboolean(L, !r ? 1 : 0);
 	return 1;
 }
 
@@ -1238,7 +1259,14 @@ conn_isnonblocking(lua_State *L)
 static int
 conn_flush(lua_State *L)
 {
-	lua_pushinteger(L, PQflush(pgsql_conn(L, 1)));
+	int r;
+
+	r = PQflush(pgsql_conn(L, 1));
+
+	if (r >= 0)
+		lua_pushboolean(L, r == 0 ? 1 : 0);
+	else
+		lua_pushnil(L);
 	return 1;
 }
 
@@ -1326,23 +1354,33 @@ conn_lo_import_with_oid(lua_State *L)
 static int
 conn_lo_export(lua_State *L)
 {
-	lua_pushinteger(L,
-	    lo_export(pgsql_conn(L, 1), luaL_checkinteger(L, 2),
-	    luaL_checkstring(L, 3)));
+	int r;
+
+	r = lo_export(pgsql_conn(L, 1), luaL_checkinteger(L, 2),
+	    luaL_checkstring(L, 3));
+
+	lua_pushboolean(L, r == 1 ? 1 : 0);
 	return 1;
 }
 
 static int
 conn_lo_open(lua_State *L)
 {
+	PGconn *conn;
 	largeObject **o;
+	int fd;
 
-	o = lua_newuserdata(L, sizeof(largeObject *));
-	(*o)->conn = pgsql_conn(L, 1);
-	(*o)->fd = lo_open((*o)->conn, luaL_checkinteger(L, 2),
-	    luaL_checkinteger(L, 3));
-	luaL_getmetatable(L, LO_METATABLE);
-	lua_setmetatable(L, -2);
+	conn = pgsql_conn(L, 1);
+	fd = lo_open(conn, luaL_checkinteger(L, 2), luaL_checkinteger(L, 3));
+
+	if (fd != -1) {
+		o = lua_newuserdata(L, sizeof(largeObject *));
+		(*o)->conn = conn;
+		(*o)->fd = fd;
+		luaL_getmetatable(L, LO_METATABLE);
+		lua_setmetatable(L, -2);
+	} else
+		lua_pushnil(L);
 	return 1;
 }
 
@@ -1479,7 +1517,7 @@ res_fsize(lua_State *L)
 static int
 res_binaryTuples(lua_State *L)
 {
-	lua_pushinteger(L,
+	lua_pushboolean(L,
 	    PQbinaryTuples(*(PGresult **)luaL_checkudata(L, 1, RES_METATABLE)));
 	return 1;
 }
@@ -2081,7 +2119,7 @@ pgsql_set_info(lua_State *L)
 	lua_pushliteral(L, "PostgreSQL binding for Lua");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "pgsql 1.4.10");
+	lua_pushliteral(L, "pgsql 1.5.0");
 	lua_settable(L, -3);
 }
 
