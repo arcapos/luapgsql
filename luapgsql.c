@@ -132,11 +132,8 @@ pgsql_encryptPassword(lua_State *L)
 
 	encrypted = PQencryptPassword(luaL_checkstring(L, 1),
 	    luaL_checkstring(L, 2));
-	if (encrypted != NULL) {
-		lua_pushstring(L, encrypted);
-		PQfreemem(encrypted);
-	} else
-		lua_pushnil(L);
+	lua_pushstring(L, encrypted);
+	PQfreemem(encrypted);
 	return 1;
 }
 
