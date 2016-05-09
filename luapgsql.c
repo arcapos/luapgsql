@@ -1242,7 +1242,7 @@ conn_setnonblocking(lua_State *L)
 	int r;
 
 	r = PQsetnonblocking(pgsql_conn(L, 1), lua_toboolean(L, 2));
-	lua_pushboolean(L, !r ? 1 : 0);
+	lua_pushboolean(L, !r);
 	return 1;
 }
 
@@ -1261,7 +1261,7 @@ conn_flush(lua_State *L)
 	r = PQflush(pgsql_conn(L, 1));
 
 	if (r >= 0)
-		lua_pushboolean(L, r == 0 ? 1 : 0);
+		lua_pushboolean(L, r == 0);
 	else
 		lua_pushnil(L);
 	return 1;
@@ -1356,7 +1356,7 @@ conn_lo_export(lua_State *L)
 	r = lo_export(pgsql_conn(L, 1), luaL_checkinteger(L, 2),
 	    luaL_checkstring(L, 3));
 
-	lua_pushboolean(L, r == 1 ? 1 : 0);
+	lua_pushboolean(L, r == 1);
 	return 1;
 }
 
