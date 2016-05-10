@@ -69,7 +69,7 @@ gcmalloc(lua_State *L, size_t size)
 static void
 gcfree(void **p)
 {
-	free(*p);
+	PQfreemem(*p);
 	*p = NULL;
 }
 
@@ -417,10 +417,15 @@ conn_sslAttributeNames(lua_State *L)
 static int
 conn_exec(lua_State *L)
 {
+	PGconn *conn;
 	PGresult **res;
+	const char *command;
+
+	conn = pgsql_conn(L, 1);
+	command = luaL_checkstring(L, 2);
 
 	res = lua_newuserdata(L, sizeof(PGresult *));
-	*res = PQexec(pgsql_conn(L, 1), luaL_checkstring(L, 2));
+	*res = PQexec(conn, command);
 	luaL_getmetatable(L, RES_METATABLE);
 	lua_setmetatable(L, -2);
 	return 1;
@@ -684,9 +689,15 @@ conn_execPrepared(lua_State *L)
 static int
 conn_describePrepared(lua_State *L)
 {
+	PGconn *conn;
 	PGresult **res;
+	const char *name;
+
+	conn = pgsql_conn(L, 1);
+	name = luaL_checkstring(L, 2);
+
 	res = lua_newuserdata(L, sizeof(PGresult *));
-	*res = PQdescribePrepared(pgsql_conn(L, 1), luaL_checkstring(L, 2));
+	*res = PQdescribePrepared(conn, name);
 	luaL_getmetatable(L, RES_METATABLE);
 	lua_setmetatable(L, -2);
 	return 1;
@@ -695,9 +706,15 @@ conn_describePrepared(lua_State *L)
 static int
 conn_describePortal(lua_State *L)
 {
+	PGconn *conn;
 	PGresult **res;
+	const char *name;
+
+	conn = pgsql_conn(L, 1);
+	name = luaL_checkstring(L, 2);
+
 	res = lua_newuserdata(L, sizeof(PGresult *));
-	*res = PQdescribePortal(pgsql_conn(L, 1), luaL_checkstring(L, 2));
+	*res = PQdescribePortal(conn, name);
 	luaL_getmetatable(L, RES_METATABLE);
 	lua_setmetatable(L, -2);
 	return 1;
@@ -1665,11 +1682,14 @@ res_tuples_iterator(lua_State *L)
 static int
 res_tuples(lua_State *L)
 {
+	PGresult **res;
 	tuple *t;
+
+	res = (PGresult **)luaL_checkudata(L, 1, RES_METATABLE);
 
 	lua_pushcfunction(L, res_tuples_iterator);
 	t = lua_newuserdata(L, sizeof(tuple));
-	t->res = *(PGresult **)luaL_checkudata(L, 1, RES_METATABLE);
+	t->res = *res;
 	t->row = -1;
 	luaL_getmetatable(L, TUPLE_METATABLE);
 	lua_setmetatable(L, -2);
