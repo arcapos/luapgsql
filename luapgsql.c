@@ -429,6 +429,7 @@ get_sql_params(lua_State *L, int t, int n, Oid *paramTypes, char **paramValues,
 {
 	int k, c;
 
+	t = lua_absindex(L, t);
 	switch (lua_type(L, t)) {
 	case LUA_TBOOLEAN:
 		if (paramTypes != NULL)
@@ -495,7 +496,7 @@ get_sql_params(lua_State *L, int t, int n, Oid *paramTypes, char **paramValues,
 		n = 1;
 		break;
 	case LUA_TTABLE:
-		for (k = 1;; k++) {
+		for (k = 1; ; k++) {
 			lua_pushinteger(L, k);
 			lua_gettable(L, t);
 			if (lua_isnil(L, -1))
