@@ -518,11 +518,13 @@ get_sql_params(lua_State *L, int t, int n, Oid *paramTypes, char **paramValues,
 static int
 conn_execParams(lua_State *L)
 {
+	PGconn *conn;
 	PGresult **res;
 	Oid *paramTypes;
 	char **paramValues;
 	int n, nParams, sqlParams, *paramLengths, *paramFormats, count;
 
+	conn = pgsql_conn(L, 1);
 	nParams = lua_gettop(L) - 2;	/* subtract connection and command */
 	if (nParams < 0)
 		nParams = 0;
@@ -555,8 +557,7 @@ conn_execParams(lua_State *L)
 		paramFormats = NULL;
 	}
 	res = lua_newuserdata(L, sizeof(PGresult *));
-	*res = PQexecParams(pgsql_conn(L, 1),
-	    luaL_checkstring(L, 2), sqlParams, paramTypes,
+	*res = PQexecParams(conn, luaL_checkstring(L, 2), sqlParams, paramTypes,
 	    (const char * const*)paramValues, paramLengths, paramFormats, 0);
 	luaL_getmetatable(L, RES_METATABLE);
 	lua_setmetatable(L, -2);
@@ -566,10 +567,12 @@ conn_execParams(lua_State *L)
 static int
 conn_prepare(lua_State *L)
 {
+	PGconn *conn;
 	PGresult **res;
 	Oid *paramTypes;
 	int n, nParams, sqlParams, count;
 
+	conn = pgsql_conn(L, 1);
 	nParams = lua_gettop(L) - 3;	/* subtract connection, name, command */
 	if (nParams < 0)
 		nParams = 0;
@@ -595,8 +598,8 @@ conn_prepare(lua_State *L)
 	} else
 		paramTypes = NULL;
 	res = lua_newuserdata(L, sizeof(PGresult *));
-	*res = PQprepare(pgsql_conn(L, 1), luaL_checkstring(L, 2),
-	    luaL_checkstring(L, 3), sqlParams, paramTypes);
+	*res = PQprepare(conn, luaL_checkstring(L, 2), luaL_checkstring(L, 3),
+	    sqlParams, paramTypes);
 	luaL_getmetatable(L, RES_METATABLE);
 	lua_setmetatable(L, -2);
 	return 1;
@@ -605,10 +608,12 @@ conn_prepare(lua_State *L)
 static int
 conn_execPrepared(lua_State *L)
 {
+	PGconn *conn;
 	PGresult **res;
 	char **paramValues;
 	int n, nParams, sqlParams, *paramLengths, *paramFormats, count;
 
+	conn = pgsql_conn(L, 1);
 	nParams = lua_gettop(L) - 2;	/* subtract connection and name */
 	if (nParams < 0)
 		nParams = 0;
@@ -639,9 +644,8 @@ conn_execPrepared(lua_State *L)
 		paramFormats = NULL;
 	}
 	res = lua_newuserdata(L, sizeof(PGresult *));
-	*res = PQexecPrepared(pgsql_conn(L, 1), luaL_checkstring(L, 2),
-	    sqlParams, (const char * const*)paramValues, paramLengths,
-	    paramFormats, 0);
+	*res = PQexecPrepared(conn, luaL_checkstring(L, 2), sqlParams,
+	    (const char * const*)paramValues, paramLengths, paramFormats, 0);
 	luaL_getmetatable(L, RES_METATABLE);
 	lua_setmetatable(L, -2);
 	return 1;
@@ -775,9 +779,12 @@ conn_sendQuery(lua_State *L)
 static int
 conn_sendQueryParams(lua_State *L)
 {
+	PGconn *conn;
 	Oid *paramTypes;
 	char **paramValues;
 	int n, nParams, sqlParams, *paramLengths, *paramFormats, count;
+
+	conn = pgsql_conn(L, 1);
 
 	nParams = lua_gettop(L) - 2;	/* subtract connection and command */
 	if (nParams < 0)
@@ -805,18 +812,20 @@ conn_sendQueryParams(lua_State *L)
 		paramFormats = NULL;
 	}
 	lua_pushboolean(L,
-	    PQsendQueryParams(pgsql_conn(L, 1), luaL_checkstring(L, 2),
-	    sqlParams, paramTypes, (const char * const*)paramValues,
-	    paramLengths, paramFormats, 0));
+	    PQsendQueryParams(conn, luaL_checkstring(L, 2), sqlParams,
+	    paramTypes, (const char * const*)paramValues, paramLengths,
+	    paramFormats, 0));
 	return 1;
 }
 
 static int
 conn_sendPrepare(lua_State *L)
 {
+	PGconn *conn;
 	Oid *paramTypes;
 	int n, nParams, sqlParams, count;
 
+	conn = pgsql_conn(L, 1);
 	nParams = lua_gettop(L) - 3;	/* subtract connection, name, command */
 	if (nParams < 0)
 		nParams = 0;
@@ -835,18 +844,19 @@ conn_sendPrepare(lua_State *L)
 		}
 	} else
 		paramTypes = NULL;
-	lua_pushboolean(L, PQsendPrepare(pgsql_conn(L, 1),
-	    luaL_checkstring(L, 2), luaL_checkstring(L, 3), sqlParams,
-	    paramTypes));
+	lua_pushboolean(L, PQsendPrepare(conn, luaL_checkstring(L, 2),
+	    luaL_checkstring(L, 3), sqlParams, paramTypes));
 	return 1;
 }
 
 static int
 conn_sendQueryPrepared(lua_State *L)
 {
+	PGconn *conn;
 	char **paramValues;
 	int n, nParams, sqlParams, *paramLengths, *paramFormats, count;
 
+	conn = pgsql_conn(L, 1);
 	nParams = lua_gettop(L) - 2;	/* subtract connection and name */
 	if (nParams < 0)
 		nParams = 0;
@@ -871,9 +881,8 @@ conn_sendQueryPrepared(lua_State *L)
 		paramFormats = NULL;
 	}
 	lua_pushboolean(L,
-	    PQsendQueryPrepared(pgsql_conn(L, 1), luaL_checkstring(L, 2),
-	    nParams, (const char * const*)paramValues, paramLengths,
-	    paramFormats, 0));
+	    PQsendQueryPrepared(conn, luaL_checkstring(L, 2), nParams,
+	    (const char * const*)paramValues, paramLengths, paramFormats, 0));
 	return 1;
 }
 
