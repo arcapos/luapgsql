@@ -1367,18 +1367,19 @@ conn_lo_open(lua_State *L)
 {
 	PGconn *conn;
 	largeObject *o;
-	int fd;
+	int oid, mode;
 
 	conn = pgsql_conn(L, 1);
-	fd = lo_open(conn, luaL_checkinteger(L, 2), luaL_checkinteger(L, 3));
+	oid = luaL_checkinteger(L, 2);
+	mode = luaL_checkinteger(L, 3);
 
-	if (fd != -1) {
-		o = lua_newuserdata(L, sizeof(largeObject));
-		luaL_getmetatable(L, LO_METATABLE);
-		lua_setmetatable(L, -2);
-		o->conn = conn;
-		o->fd = fd;
-	} else
+	o = lua_newuserdata(L, sizeof(largeObject));
+	luaL_getmetatable(L, LO_METATABLE);
+	lua_setmetatable(L, -2);
+	o->conn = conn;
+	o->fd = lo_open(conn, oid, mode);
+
+	if (o->fd == -1)
 		lua_pushnil(L);
 	return 1;
 }
