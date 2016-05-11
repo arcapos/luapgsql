@@ -55,7 +55,7 @@
 /*
  * Garbage collected memory
  */
-static void **
+static void *
 gcmalloc(lua_State *L, size_t size)
 {
 	void **p;
@@ -67,10 +67,11 @@ gcmalloc(lua_State *L, size_t size)
 
 /* Memory can be free'ed immediately or left to the garbage collector */
 static void
-gcfree(void **p)
+gcfree(void *p)
 {
-	PQfreemem(*p);
-	*p = NULL;
+	void **mem = (void **)p;
+	PQfreemem(*mem);
+	*mem = NULL;
 }
 
 static int
@@ -161,7 +162,7 @@ pgsql_ping(lua_State *L)
 static int
 pgsql_encryptPassword(lua_State *L)
 {
-	void **pw;
+	char const **pw;
 
 	pw = gcmalloc(L, sizeof(char *));
 	*pw = PQencryptPassword(luaL_checkstring(L, 1), luaL_checkstring(L, 2));
@@ -568,10 +569,11 @@ conn_execParams(lua_State *L)
 		paramFormats = NULL;
 	}
 	res = lua_newuserdata(L, sizeof(PGresult *));
-	*res = PQexecParams(conn, command, sqlParams, paramTypes,
-	    (const char * const*)paramValues, paramLengths, paramFormats, 0);
+	*res = NULL;
 	luaL_getmetatable(L, RES_METATABLE);
 	lua_setmetatable(L, -2);
+	*res = PQexecParams(conn, command, sqlParams, paramTypes,
+	    (const char * const*)paramValues, paramLengths, paramFormats, 0);
 
 	return 1;
 }
@@ -615,9 +617,10 @@ conn_prepare(lua_State *L)
 		paramTypes = NULL;
 
 	res = lua_newuserdata(L, sizeof(PGresult *));
-	*res = PQprepare(conn, command, name, sqlParams, paramTypes);
+	*res = NULL;
 	luaL_getmetatable(L, RES_METATABLE);
 	lua_setmetatable(L, -2);
+	*res = PQprepare(conn, command, name, sqlParams, paramTypes);
 
 	return 1;
 }
@@ -664,10 +667,11 @@ conn_execPrepared(lua_State *L)
 		paramFormats = NULL;
 	}
 	res = lua_newuserdata(L, sizeof(PGresult *));
-	*res = PQexecPrepared(conn, command, sqlParams,
-	    (const char * const*)paramValues, paramLengths, paramFormats, 0);
+	*res = NULL;
 	luaL_getmetatable(L, RES_METATABLE);
 	lua_setmetatable(L, -2);
+	*res = PQexecPrepared(conn, command, sqlParams,
+	    (const char * const*)paramValues, paramLengths, paramFormats, 0);
 
 	return 1;
 }
@@ -683,9 +687,10 @@ conn_describePrepared(lua_State *L)
 	name = luaL_checkstring(L, 2);
 
 	res = lua_newuserdata(L, sizeof(PGresult *));
-	*res = PQdescribePrepared(conn, name);
+	*res = NULL;
 	luaL_getmetatable(L, RES_METATABLE);
 	lua_setmetatable(L, -2);
+	*res = PQdescribePrepared(conn, name);
 	return 1;
 }
 
@@ -700,9 +705,10 @@ conn_describePortal(lua_State *L)
 	name = luaL_checkstring(L, 2);
 
 	res = lua_newuserdata(L, sizeof(PGresult *));
-	*res = PQdescribePortal(conn, name);
+	*res = NULL;
 	luaL_getmetatable(L, RES_METATABLE);
 	lua_setmetatable(L, -2);
+	*res = PQdescribePortal(conn, name);
 	return 1;
 }
 
@@ -736,7 +742,7 @@ static int
 conn_escapeLiteral(lua_State *L)
 {
 	const char *s;
-	void **p;
+	char **p;
 	PGconn *d;
 	size_t len;
 
@@ -753,7 +759,7 @@ static int
 conn_escapeIdentifier(lua_State *L)
 {
 	const char *s;
-	void  **p;
+	char  **p;
 	PGconn *d;
 	size_t len;
 
@@ -769,7 +775,7 @@ conn_escapeIdentifier(lua_State *L)
 static int
 conn_escapeBytea(lua_State *L)
 {
-	void **p;
+	unsigned char **p;
 	const unsigned char *s;
 	PGconn *d;
 	size_t from_length, to_length;
@@ -787,7 +793,7 @@ conn_escapeBytea(lua_State *L)
 static int
 conn_unescapeBytea(lua_State *L)
 {
-	void **p;
+	unsigned char **p;
 	size_t len;
 
 	p = gcmalloc(L, sizeof(char *));
