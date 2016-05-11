@@ -218,6 +218,7 @@ conn_finish(lua_State *L)
 		lua_pushlightuserdata(L, *conn);
 		lua_gettable(L, LUA_REGISTRYINDEX);
 		if (lua_isnil(L, -1)) {
+			printf("PQfinish\n");
 			PQfinish(*conn);
 			*conn = NULL;
 			/* clean out now invalidated keys from uservalue */
@@ -1365,22 +1366,71 @@ conn_lo_export(lua_State *L)
 static int
 conn_lo_open(lua_State *L)
 {
-	PGconn *conn;
-	largeObject *o;
-	int oid, mode;
+	int fd;
 
-	conn = pgsql_conn(L, 1);
-	oid = luaL_checkinteger(L, 2);
-	mode = luaL_checkinteger(L, 3);
-
-	o = lua_newuserdata(L, sizeof(largeObject));
-	luaL_getmetatable(L, LO_METATABLE);
-	lua_setmetatable(L, -2);
-	o->conn = conn;
-	o->fd = lo_open(conn, oid, mode);
-
-	if (o->fd == -1)
+	fd = lo_open(pgsql_conn(L, 1), luaL_checkinteger(L, 2),
+	    luaL_checkinteger(L, 3));
+	if (fd == -1)
 		lua_pushnil(L);
+	else
+		lua_pushinteger(L, fd);
+	return 1;
+}
+
+static int
+conn_lo_write(lua_State *L)
+{
+	const char *s;
+	size_t len;
+
+	s = lua_tolstring(L, 3, &len);
+	lua_pushinteger(L, lo_write(pgsql_conn(L, 1), luaL_checkinteger(L, 2),
+	    s, len));
+	return 1;
+}
+
+static int
+conn_lo_read(lua_State *L)
+{
+	char *buf;
+	size_t len;
+
+	len = luaL_checkinteger(L, 3);
+	buf = lua_newuserdata(L, len);
+	len = lo_read(pgsql_conn(L, 1), luaL_checkinteger(L, 2), buf, len);
+	lua_pushlstring(L, buf, len);
+	lua_pushinteger(L, len);
+	return 2;
+}
+
+static int
+conn_lo_lseek(lua_State *L)
+{
+	lua_pushinteger(L, lo_lseek(pgsql_conn(L, 1), luaL_checkinteger(L, 2),
+	    luaL_checkinteger(L, 3), luaL_checkinteger(L, 4)));
+	return 1;
+}
+
+static int
+conn_lo_tell(lua_State *L)
+{
+	lua_pushinteger(L, lo_tell(pgsql_conn(L, 1), luaL_checkinteger(L, 2)));
+	return 1;
+}
+
+static int
+conn_lo_truncate(lua_State *L)
+{
+	lua_pushinteger(L, lo_truncate(pgsql_conn(L, 1),
+	    luaL_checkinteger(L, 2), luaL_checkinteger(L, 3)));
+	return 1;
+}
+
+static int
+conn_lo_close(lua_State *L)
+{
+	lua_pushboolean(L,
+	    lo_close(pgsql_conn(L, 1), luaL_checkinteger(L, 2)) == 0);
 	return 1;
 }
 
@@ -1776,83 +1826,6 @@ notify_clear(lua_State *L)
 }
 
 /*
- * Large object functions
- */
-static int
-pgsql_lo_write(lua_State *L)
-{
-	largeObject *o;
-	const char *s;
-	size_t len;
-
-	o = luaL_checkudata(L, 1, LO_METATABLE);
-	s = lua_tolstring(L, 2, &len);
-	lua_pushinteger(L, lo_write(o->conn, o->fd, s, len));
-	return 1;
-}
-
-static int
-pgsql_lo_read(lua_State *L)
-{
-	largeObject *o;
-	int res;
-	char buf[256];	/* arbitrary size */
-
-	o = luaL_checkudata(L, 1, LO_METATABLE);
-	/* XXX don't hard code the buffer size */
-	res = lo_read(o->conn, o->fd, buf, sizeof buf);
-	lua_pushstring(L, buf);
-	lua_pushinteger(L, res);
-	return 2;
-}
-
-static int
-pgsql_lo_lseek(lua_State *L)
-{
-	largeObject *o;
-
-	o = luaL_checkudata(L, 1, LO_METATABLE);
-	lua_pushinteger(L, lo_lseek(o->conn, o->fd,
-	    luaL_checkinteger(L, 2), luaL_checkinteger(L, 3)));
-	return 1;
-}
-
-static int
-pgsql_lo_tell(lua_State *L)
-{
-	largeObject *o;
-
-	o = luaL_checkudata(L, 1, LO_METATABLE);
-	lua_pushinteger(L, lo_tell(o->conn, o->fd));
-	return 1;
-}
-
-static int
-pgsql_lo_truncate(lua_State *L)
-{
-	largeObject *o;
-
-	o = luaL_checkudata(L, 1, LO_METATABLE);
-	lua_pushinteger(L, lo_truncate(o->conn, o->fd,
-	    luaL_checkinteger(L, 2)));
-	return 1;
-}
-
-static int
-pgsql_lo_close(lua_State *L)
-{
-	largeObject *o;
-
-	o = luaL_checkudata(L, 1, LO_METATABLE);
-	if (o->fd >= 0)  {
-		if (PQstatus(o->conn) == CONNECTION_OK)
-			lo_close(o->conn, o->fd);
-		o->fd = -1;
-	}
-	return 0;
-}
-
-/*
  * Tuple and value functions
  */
 static int
@@ -2227,6 +2200,12 @@ luaopen_pgsql(lua_State *L)
 		{ "lo_import_with_oid", conn_lo_import_with_oid },
 		{ "lo_export", conn_lo_export },
 		{ "lo_open", conn_lo_open },
+		{ "lo_write", conn_lo_write },
+		{ "lo_read", conn_lo_read },
+		{ "lo_lseek", conn_lo_lseek },
+		{ "lo_tell", conn_lo_tell },
+		{ "lo_truncate", conn_lo_truncate },
+		{ "lo_close", conn_lo_close },
 		{ NULL, NULL }
 	};
 	struct luaL_Reg res_methods[] = {
@@ -2270,15 +2249,6 @@ luaopen_pgsql(lua_State *L)
 		{ "relname", notify_relname },
 		{ "pid", notify_pid },
 		{ "extra", notify_extra },
-		{ NULL, NULL }
-	};
-	struct luaL_Reg lo_methods[] = {
-		{ "write", pgsql_lo_write },
-		{ "read", pgsql_lo_read },
-		{ "lseek", pgsql_lo_lseek },
-		{ "tell", pgsql_lo_tell },
-		{ "truncate", pgsql_lo_truncate },
-		{ "close", pgsql_lo_close },
 		{ NULL, NULL }
 	};
 	if (luaL_newmetatable(L, CONN_METATABLE)) {
@@ -2333,26 +2303,6 @@ luaopen_pgsql(lua_State *L)
 #endif
 		lua_pushliteral(L, "__gc");
 		lua_pushcfunction(L, notify_clear);
-		lua_settable(L, -3);
-
-		lua_pushliteral(L, "__index");
-		lua_pushvalue(L, -2);
-		lua_settable(L, -3);
-
-		lua_pushliteral(L, "__metatable");
-		lua_pushliteral(L, "must not access this metatable");
-		lua_settable(L, -3);
-	}
-	lua_pop(L, 1);
-
-	if (luaL_newmetatable(L, LO_METATABLE)) {
-#if LUA_VERSION_NUM >= 502
-		luaL_setfuncs(L, lo_methods, 0);
-#else
-		luaL_register(L, NULL, lo_methods);
-#endif
-		lua_pushliteral(L, "__gc");
-		lua_pushcfunction(L, pgsql_lo_close);
 		lua_settable(L, -3);
 
 		lua_pushliteral(L, "__index");

@@ -35,7 +35,6 @@
 #define TUPLE_METATABLE		"pgsql tuple methods"
 #define FIELD_METATABLE		"pgsql tuple field methods"
 #define NOTIFY_METATABLE	"pgsql asychronous notification methods"
-#define LO_METATABLE		"pgsql large object methods"
 #define GCMEM_METATABLE		"pgsql garbage collected memory"
 
 /* OIDs from server/pg_type.h */
@@ -43,11 +42,6 @@
 #define INT8OID			20
 #define TEXTOID			25
 #define FLOAT8OID		701
-
-typedef struct largeObject {
-	PGconn		*conn;
-	int		 fd;
-} largeObject;
 
 typedef struct tuple {
 	PGresult	*res;
