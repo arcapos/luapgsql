@@ -1366,18 +1366,18 @@ static int
 conn_lo_open(lua_State *L)
 {
 	PGconn *conn;
-	largeObject **o;
+	largeObject *o;
 	int fd;
 
 	conn = pgsql_conn(L, 1);
 	fd = lo_open(conn, luaL_checkinteger(L, 2), luaL_checkinteger(L, 3));
 
 	if (fd != -1) {
-		o = lua_newuserdata(L, sizeof(largeObject *));
-		(*o)->conn = conn;
-		(*o)->fd = fd;
+		o = lua_newuserdata(L, sizeof(largeObject));
 		luaL_getmetatable(L, LO_METATABLE);
 		lua_setmetatable(L, -2);
+		o->conn = conn;
+		o->fd = fd;
 	} else
 		lua_pushnil(L);
 	return 1;
@@ -1780,26 +1780,26 @@ notify_clear(lua_State *L)
 static int
 pgsql_lo_write(lua_State *L)
 {
-	largeObject **o;
+	largeObject *o;
 	const char *s;
 	size_t len;
 
 	o = luaL_checkudata(L, 1, LO_METATABLE);
 	s = lua_tolstring(L, 2, &len);
-	lua_pushinteger(L, lo_write((*o)->conn, (*o)->fd, s, len));
+	lua_pushinteger(L, lo_write(o->conn, o->fd, s, len));
 	return 1;
 }
 
 static int
 pgsql_lo_read(lua_State *L)
 {
-	largeObject **o;
+	largeObject *o;
 	int res;
 	char buf[256];	/* arbitrary size */
 
 	o = luaL_checkudata(L, 1, LO_METATABLE);
 	/* XXX don't hard code the buffer size */
-	res = lo_read((*o)->conn, (*o)->fd, buf, sizeof buf);
+	res = lo_read(o->conn, o->fd, buf, sizeof buf);
 	lua_pushstring(L, buf);
 	lua_pushinteger(L, res);
 	return 2;
@@ -1808,10 +1808,10 @@ pgsql_lo_read(lua_State *L)
 static int
 pgsql_lo_lseek(lua_State *L)
 {
-	largeObject **o;
+	largeObject *o;
 
 	o = luaL_checkudata(L, 1, LO_METATABLE);
-	lua_pushinteger(L, lo_lseek((*o)->conn, (*o)->fd,
+	lua_pushinteger(L, lo_lseek(o->conn, o->fd,
 	    luaL_checkinteger(L, 2), luaL_checkinteger(L, 3)));
 	return 1;
 }
@@ -1819,20 +1819,20 @@ pgsql_lo_lseek(lua_State *L)
 static int
 pgsql_lo_tell(lua_State *L)
 {
-	largeObject **o;
+	largeObject *o;
 
 	o = luaL_checkudata(L, 1, LO_METATABLE);
-	lua_pushinteger(L, lo_tell((*o)->conn, (*o)->fd));
+	lua_pushinteger(L, lo_tell(o->conn, o->fd));
 	return 1;
 }
 
 static int
 pgsql_lo_truncate(lua_State *L)
 {
-	largeObject **o;
+	largeObject *o;
 
 	o = luaL_checkudata(L, 1, LO_METATABLE);
-	lua_pushinteger(L, lo_truncate((*o)->conn, (*o)->fd,
+	lua_pushinteger(L, lo_truncate(o->conn, o->fd,
 	    luaL_checkinteger(L, 2)));
 	return 1;
 }
@@ -1840,24 +1840,14 @@ pgsql_lo_truncate(lua_State *L)
 static int
 pgsql_lo_close(lua_State *L)
 {
-	largeObject **o;
+	largeObject *o;
 
 	o = luaL_checkudata(L, 1, LO_METATABLE);
-	lua_pushinteger(L, lo_close((*o)->conn, (*o)->fd));
-	*o = NULL;	/* prevent close during garbage collection time */
-	return 1;
-}
-
-static int
-pgsql_lo_clear(lua_State *L)
-{
-	largeObject **o;
-
-	o = luaL_checkudata(L, 1, LO_METATABLE);
-	if (*o)  {
-		if (PQstatus((*o)->conn) == CONNECTION_OK)
-			lo_close((*o)->conn, (*o)->fd);
-		*o = NULL;
+	if (o->fd > 0)  {
+		if (PQstatus(o->conn) == CONNECTION_OK) {
+			lo_close(o->conn, o->fd);
+		}
+		o->fd = -1;
 	}
 	return 0;
 }
@@ -2362,7 +2352,7 @@ luaopen_pgsql(lua_State *L)
 		luaL_register(L, NULL, lo_methods);
 #endif
 		lua_pushliteral(L, "__gc");
-		lua_pushcfunction(L, pgsql_lo_clear);
+		lua_pushcfunction(L, pgsql_lo_close);
 		lua_settable(L, -3);
 
 		lua_pushliteral(L, "__index");
