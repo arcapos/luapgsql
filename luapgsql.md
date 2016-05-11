@@ -1,8 +1,10 @@
-Accessing PostgreSQL Databases
-==============================
+PostgreSQL for Lua
+==================
 
-The pgsql module
-----------------
+Accessing PostgreSQL Databases
+------------------------------
+
+### The pgsql module
 
 The pgsql is module is used to access PostgreSQL databases from Lua
 code. It is a Lua binding to libpq, the PostgreSQL C language interface
@@ -35,8 +37,7 @@ ON AN AS IS BASIS, AND THE UNIVERSITY OF CALIFORNIA HAS NO OBLIGATIONS
 TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR
 MODIFICATIONS.
 
-Database connection control functions
--------------------------------------
+### Database connection control functions
 
 The following functions deal with making a connection to a PostgreSQL
 backend server. An application program can have several backend
@@ -46,7 +47,7 @@ object, which is obtained from the function connectdb. The status
 function should be called to check the return value for a successful
 connection before queries are sent via the connection object.
 
-### connectdb(conninfo)
+#### connectdb(conninfo)
 
 Makes a new connection to the database server. This function opens a new
 database connection using the parameters taken from the string conninfo.
@@ -54,13 +55,13 @@ The passed string can be empty to use all default parameters, or it can
 contain one or more parameter settings separated by whitespace, or it
 can contain a URI.
 
-### connectStart(conninfo)
+#### connectStart(conninfo)
 
 Make a connection to the database server in a nonblocking manner. With
 connectStart, the database connection is made using the parameters taken
 from the string conninfo as described above for connectdb.
 
-### ping(conninfo)
+#### ping(conninfo)
 
 ping reports the status of the server. It accepts connection parameters
 identical to those of connectdb, described above. It is not necessary to
@@ -68,7 +69,7 @@ supply correct user name, password, or database name values to obtain
 the server status; however, if incorrect values are provided, the server
 will log a failed connection attempt.
 
-### conn:connectPoll()
+#### conn:connectPoll()
 
 If connectStart succeeds, the next stage is to poll libpq so that it can
 proceed with the connection sequence. Use conn:socket to obtain the
@@ -85,7 +86,7 @@ PGRES\_POLLING\_FAILED, indicating the connection procedure has failed,
 or PGRES\_POLLING\_OK, indicating the connection has been successfully
 made.
 
-### conn:finish()
+#### conn:finish()
 
 Closes the connection to the server. Also frees memory used by the
 underlying connection object. Note that even if the server connection
@@ -93,53 +94,52 @@ attempt fails (as indicated by status), the application should call
 finish to free the memory used by the underlying connection object. The
 connection object must not be used again after finish has been called.
 
-### conn:reset()
+#### conn:reset()
 
 Resets the communication channel to the server. This function will close
 the connection to the server and attempt to reestablish a new connection
 to the same server, using all the same parameters previously used. This
 might be useful for error recovery if a working connection is lost.
 
-### conn:resetStart()
+#### conn:resetStart()
 
 Reset the communication channel to the server, in a nonblocking manner.
 
 conn:resetPoll()
 
-Connection status functions
----------------------------
+### Connection status functions
 
-### conn:db()
+#### conn:db()
 
 Returns the database name of the connection.
 
-### conn:user()
+#### conn:user()
 
 Returns the user name of the connection.
 
-### conn:pass()
+#### conn:pass()
 
 Returns the password of the connection.
 
-### conn:host()
+#### conn:host()
 
 Returns the server host name of the connection.
 
-### conn:port()
+#### conn:port()
 
 Returns the port of the connection.
 
-### conn:tty()
+#### conn:tty()
 
 Returns the debug TTY of the connection. (This is obsolete, since the
 server no longer pays attention to the TTY setting, but the function
 remains for backward compatibility.)
 
-### conn:options()
+#### conn:options()
 
 Returns the command-line options passed in the connection request.
 
-### conn:status()
+#### conn:status()
 
 Returns the status of the connection.
 
@@ -152,7 +152,7 @@ but a communications failure might result in the status changing to
 CONNECTION\_BAD prematurely. In that case the application could try to
 recover by calling reset.
 
-### conn:transactionStatus()
+#### conn:transactionStatus()
 
 Returns the current in-transaction status of the server.
 
@@ -163,7 +163,7 @@ PQTRANS\_UNKNOWN is reported if the connection is bad. PQTRANS\_ACTIVE
 is reported only when a query has been sent to the server and not yet
 completed.
 
-### conn:parameterStatus(paramName)
+#### conn:parameterStatus(paramName)
 
 Looks up a current parameter setting of the server.
 
@@ -197,7 +197,7 @@ can assume it is off, that is, backslashes are treated as escapes in
 string literals. Also, the presence of this parameter can be taken as an
 indication that the escape string syntax (E’...’) is accepted.
 
-### conn:protocolVersion()
+#### conn:protocolVersion()
 
 Interrogates the frontend/backend protocol being used.
 
@@ -210,7 +210,7 @@ will normally be used when communicating with PostgreSQL 7.4 or later
 servers; pre-7.4 servers support only protocol 2.0. (Protocol 1.0 is
 obsolete and not supported by pgsql.)
 
-### conn:serverVersion()
+#### conn:serverVersion()
 
 Returns an integer representing the backend version.
 
@@ -221,7 +221,7 @@ numbers and appending them together. For example, version 8.1.5 will be
 returned as 80105, and version 8.2 will be returned as 80200 (leading
 zeroes are not shown). Zero is returned if the connection is bad.
 
-### conn:errorMessage()
+#### conn:errorMessage()
 
 Returns the error message most recently generated by an operation on the
 connection.
@@ -230,7 +230,7 @@ Nearly all pgsql functions will set a message for errorMessage if they
 fail. Note that by pgsql convention, a nonempty errorMessage result can
 consist of multiple lines, and will include a trailing newline.
 
-### conn:socket()
+#### conn:socket()
 
 Obtains the file descriptor number of the connection socket to the
 server. A valid descriptor will be greater than or equal to 0; a result
@@ -238,7 +238,7 @@ of nil indicates that no server connection is currently open. (This will
 not change during normal operation, but could change during connection
 setup or reset.)
 
-### conn:backendPID()
+#### conn:backendPID()
 
 Returns the process ID (PID) of the backend process handling this
 connection.
@@ -248,7 +248,7 @@ NOTIFY messages (which include the PID of the notifying backend
 process). Note that the PID belongs to a process executing on the
 database server host, not the local host!
 
-### conn:connectionNeedsPassword()
+#### conn:connectionNeedsPassword()
 
 Returns true (1) if the connection authentication method required a
 password, but none was available. Returns false (0) if not.
@@ -256,7 +256,7 @@ password, but none was available. Returns false (0) if not.
 This function can be applied after a failed connection attempt to decide
 whether to prompt the user for a password.
 
-### conn:connectionUsedPassword()
+#### conn:connectionUsedPassword()
 
 Returns true if the connection authentication method used a password.
 Returns false if not.
@@ -264,10 +264,9 @@ Returns false if not.
 This function can be applied after either a failed or successful
 connection attempt to detect whether the server demanded a password.
 
-Command execution functions
----------------------------
+### Command execution functions
 
-### conn:exec(command)
+#### conn:exec(command)
 
 Submits a command to the server and waits for the result.
 
@@ -280,7 +279,7 @@ of the last command executed from the string. Should one of the commands
 fail, processing of the string stops with it and the returned result
 describes the error condition.
 
-### conn:execParams(command \[\[, param\] …\])
+#### conn:execParams(command \[\[, param\] …\])
 
 Submits a command to the server and waits for the result, with the
 ability to pass parameters separately from the SQL command text.
@@ -294,7 +293,7 @@ string. (There can be semicolons in it, but not more than one nonempty
 command.) This is a limitation of the underlying protocol, but has some
 usefulness as an extra defense against SQL-injection attacks.
 
-### conn:prepare()
+#### conn:prepare()
 
 Submits a request to create a prepared statement with the given
 parameters, and waits for completion.
@@ -317,7 +316,7 @@ indicate server-side success or failure. A null result indicates
 out-of-memory or inability to send the command at all. Use errorMessage
 to get more information about such errors.
 
-### conn:execPrepared()
+#### conn:execPrepared()
 
 Sends a request to execute a prepared statement with given parameters,
 and waits for the result.
@@ -336,7 +335,7 @@ paramTypes\[\] parameter is not present (it is not needed since the
 prepared statement’s parameter types were determined when it was
 created).
 
-### conn:describePrepared()
+#### conn:describePrepared()
 
 Submits a request to obtain information about the specified prepared
 statement, and waits for completion.
@@ -354,7 +353,7 @@ parameters of the prepared statement, and the functions nfields, fname,
 ftype, etc provide information about the result columns (if any) of the
 statement.
 
-### conn:describePortal(portalName)
+#### conn:describePortal(portalName)
 
 Submits a request to obtain information about the specified portal, and
 waits for completion.
@@ -372,10 +371,9 @@ PGRES\_COMMAND\_OK is returned. The functions nfields, fname, ftype, etc
 can be applied to the result to obtain information about the result
 columns (if any) of the portal.
 
-Result functions
-----------------
+### Result functions
 
-### res:status()
+#### res:status()
 
 Returns the result status of the command.
 
@@ -408,12 +406,12 @@ A result of status PGRES\_NONFATAL\_ERROR will never be returned
 directly by exec or other query execution functions; results of this
 kind are instead passed to the notice processor.
 
-### res:resStatus(status)
+#### res:resStatus(status)
 
 Converts the enumerated type returned by PQresultStatus into a string
 constant describing the status code.
 
-### res:errorMessage()
+#### res:errorMessage()
 
 Returns the error message associated with the command, or an empty
 string if there was no error.
@@ -430,7 +428,7 @@ know the status associated with a particular result; use errorMessage
 when you want to know the status from the latest operation on the
 connection.
 
-### res:errorField(fieldcode)
+#### res:errorField(fieldcode)
 
 Returns an individual field of an error report.
 
@@ -441,13 +439,13 @@ include a trailing newline.
 
 The following field codes are available:
 
-### PG\_DIAG\_SEVERITY {#pg_diag_severity .unnumbered}
+#### PG\_DIAG\_SEVERITY {#pg_diag_severity .unnumbered}
 
 The severity; the field contents are ERROR, FATAL, or PANIC (in an error
 message), or WARNING, NOTICE, DEBUG, INFO, or LOG (in a notice message),
 or a localized translation of one of these. Always present.
 
-### PG\_DIAG\_SQLSTATE {#pg_diag_sqlstate .unnumbered}
+#### PG\_DIAG\_SQLSTATE {#pg_diag_sqlstate .unnumbered}
 
 The SQLSTATE code for the error. The SQLSTATE code identifies the type
 of error that has occurred; it can be used by front-end applications to
@@ -455,30 +453,30 @@ perform specific operations (such as error handling) in response to a
 particular database error. For a list of the possible SQLSTATE codes,
 see Appendix A. This field is not localizable, and is always present.
 
-### PG\_DIAG\_MESSAGE\_PRIMARY {#pg_diag_message_primary .unnumbered}
+#### PG\_DIAG\_MESSAGE\_PRIMARY {#pg_diag_message_primary .unnumbered}
 
 The primary human-readable error message (typically one line). Always
 present.
 
-### PG\_DIAG\_MESSAGE\_DETAIL {#pg_diag_message_detail .unnumbered}
+#### PG\_DIAG\_MESSAGE\_DETAIL {#pg_diag_message_detail .unnumbered}
 
 Detail: an optional secondary error message carrying more detail about
 the problem. Might run to multiple lines.
 
-### PG\_DIAG\_MESSAGE\_HINT {#pg_diag_message_hint .unnumbered}
+#### PG\_DIAG\_MESSAGE\_HINT {#pg_diag_message_hint .unnumbered}
 
 Hint: an optional suggestion what to do about the problem. This is
 intended to differ from detail in that it offers advice (potentially
 inappropriate) rather than hard facts. Might run to multiple lines.
 
-### PG\_DIAG\_STATEMENT\_POSITION {#pg_diag_statement_position .unnumbered}
+#### PG\_DIAG\_STATEMENT\_POSITION {#pg_diag_statement_position .unnumbered}
 
 A string containing a decimal integer indicating an error cursor
 position as an index into the original statement string. The first
 character has index 1, and positions are measured in characters not
 bytes.
 
-### PG\_DIAG\_INTERNAL\_POSITION {#pg_diag_internal_position .unnumbered}
+#### PG\_DIAG\_INTERNAL\_POSITION {#pg_diag_internal_position .unnumbered}
 
 This is defined the same as the PG\_DIAG\_STATEMENT\_POSITION field, but
 it is used when the cursor position refers to an internally generated
@@ -486,58 +484,58 @@ command rather than the one submitted by the client. The
 PG\_DIAG\_INTERNAL\_QUERY field will always appear when this field
 appears.
 
-### PG\_DIAG\_INTERNAL\_QUERY {#pg_diag_internal_query .unnumbered}
+#### PG\_DIAG\_INTERNAL\_QUERY {#pg_diag_internal_query .unnumbered}
 
 The text of a failed internally-generated command. This could be, for
 example, a SQL query issued by a PL/pgSQL function.
 
-### PG\_DIAG\_CONTEXT {#pg_diag_context .unnumbered}
+#### PG\_DIAG\_CONTEXT {#pg_diag_context .unnumbered}
 
 An indication of the context in which the error occurred. Presently this
 includes a call stack traceback of active procedural language functions
 and internally-generated queries. The trace is one entry per line, most
 recent first.
 
-### PG\_DIAG\_SCHEMA\_NAME {#pg_diag_schema_name .unnumbered}
+#### PG\_DIAG\_SCHEMA\_NAME {#pg_diag_schema_name .unnumbered}
 
 If the error was associated with a specific database object, the name of
 the schema containing that object, if any.
 
-### PG\_DIAG\_TABLE\_NAME {#pg_diag_table_name .unnumbered}
+#### PG\_DIAG\_TABLE\_NAME {#pg_diag_table_name .unnumbered}
 
 If the error was associated with a specific table, the name of the
 table. (Refer to the schema name field for the name of the table’s
 schema.)
 
-### PG\_DIAG\_COLUMN\_NAME {#pg_diag_column_name .unnumbered}
+#### PG\_DIAG\_COLUMN\_NAME {#pg_diag_column_name .unnumbered}
 
 If the error was associated with a specific table column, the name of
 the column. (Refer to the schema and table name fields to identify the
 table.)
 
-### PG\_DIAG\_DATATYPE\_NAME {#pg_diag_datatype_name .unnumbered}
+#### PG\_DIAG\_DATATYPE\_NAME {#pg_diag_datatype_name .unnumbered}
 
 If the error was associated with a specific data type, the name of the
 data type. (Refer to the schema name field for the name of the data
 type’s schema.)
 
-### PG\_DIAG\_CONSTRAINT\_NAME {#pg_diag_constraint_name .unnumbered}
+#### PG\_DIAG\_CONSTRAINT\_NAME {#pg_diag_constraint_name .unnumbered}
 
 If the error was associated with a specific constraint, the name of the
 constraint. Refer to fields listed above for the associated table or
 domain. (For this purpose, indexes are treated as constraints, even if
 they weren’t created with constraint syntax.)
 
-### PG\_DIAG\_SOURCE\_FILE {#pg_diag_source_file .unnumbered}
+#### PG\_DIAG\_SOURCE\_FILE {#pg_diag_source_file .unnumbered}
 
 The file name of the source-code location where the error was reported.
 
-### PG\_DIAG\_SOURCE\_LINE {#pg_diag_source_line .unnumbered}
+#### PG\_DIAG\_SOURCE\_LINE {#pg_diag_source_line .unnumbered}
 
 The line number of the source-code location where the error was
 reported.
 
-### PG\_DIAG\_SOURCE\_FUNCTION {#pg_diag_source_function .unnumbered}
+#### PG\_DIAG\_SOURCE\_FUNCTION {#pg_diag_source_function .unnumbered}
 
 The name of the source-code function reporting the error.
 
@@ -554,8 +552,7 @@ sometimes a detail message, but no other fields.
 Note that error fields are only available from result objects, not conn
 objects; there is no errorField function.
 
-Retrieving query result information
------------------------------------
+### Retrieving query result information
 
 These functions are used to extract information from a result object
 that represents a successful query result (that is, one that has status
@@ -566,22 +563,22 @@ query would provide, but it has zero rows. For objects with other status
 values, these functions will act as though the result has zero rows and
 zero columns.
 
-### res:ntuples()
+#### res:ntuples()
 
 Returns the number of rows (tuples) in the query result. Because it
 returns an integer result, large result sets might overflow the return
 value on 32-bit operating systems.
 
-### res:nfields()
+#### res:nfields()
 
 Returns the number of columns (fields) in each row of the query result.
 
-### res:fname(columnNumber)
+#### res:fname(columnNumber)
 
 Returns the column name associated with the given column number. Column
 numbers start at 1.
 
-### res:fnumber(columnName)
+#### res:fnumber(columnName)
 
 Returns the column number associated with the given column name.
 
@@ -590,17 +587,17 @@ Returns the column number associated with the given column name.
 The given name is treated like an identifier in an SQL command, that is,
 it is downcased unless double-quoted.
 
-### res:ftable(columnNumber)
+#### res:ftable(columnNumber)
 
 Returns the OID of the table from which the given column was fetched.
 Column numbers start at 1.
 
-### res:ftablecol(columnNumber)
+#### res:ftablecol(columnNumber)
 
 Returns the column number (within its table) of the column making up the
 specified query result column. Query-result column numbers start at 1.
 
-### res:fformat(columnNumber)
+#### res:fformat(columnNumber)
 
 Returns the format code indicating the format of the given column.
 Column numbers start at 1.
@@ -609,7 +606,7 @@ Format code zero indicates textual data representation, while format
 code one indicates binary representation. (Other codes are reserved for
 future definition.)
 
-### res:ftype(columnNumber)
+#### res:ftype(columnNumber)
 
 Returns the data type associated with the given column number. The
 integer returned is the internal OID number of the type. Column numbers
@@ -620,7 +617,7 @@ properties of the various data types. The OIDs of the built-in data
 types are defined in the file src/include/catalog/pg\_type.h in the
 PostgreSQL source tree.
 
-### res:fmod(columnNumber)
+#### res:fmod(columnNumber)
 
 Returns the type modifier of the column associated with the given column
 number. Column numbers start at 1.
@@ -630,7 +627,7 @@ indicate precision or size limits. The value -1 is used to indicate no
 information available. Most data types do not use modifiers, in which
 case the value is always -1.
 
-### res:fsize(columnNumber)
+#### res:fsize(columnNumber)
 
 Returns the size in bytes of the column associated with the given column
 number. Column numbers start at 1.
@@ -640,7 +637,7 @@ other words the size of the server’s internal representation of the data
 type. (Accordingly, it is not really very useful to clients.) A negative
 value indicates the data type is variable-length.
 
-### res:binaryTuples()
+#### res:binaryTuples()
 
 Returns true if the result contains binary data and false if it contains
 text data.
@@ -651,7 +648,7 @@ in some columns and binary data in others. fformat is preferred.
 binaryTuples returns true only if all columns of the result are binary
 (format 1).
 
-### res:getvalue(rowNumber, columNumber)
+#### res:getvalue(rowNumber, columNumber)
 
 Returns a single field value of one row of a result. Row and column
 numbers start at 1.
@@ -666,7 +663,7 @@ likely to contain embedded nulls.)
 An empty string is returned if the field value is null. See getisnull to
 distinguish null values from empty-string values.
 
-### res:getisnull(rowNumber, columnNumber)
+#### res:getisnull(rowNumber, columnNumber)
 
 Tests a field for a null value. Row and column numbers start at 1.
 
@@ -674,7 +671,7 @@ This function returns true if the field is null and false if it contains
 a non-null value. (Note that getvalue will return an empty string, not
 nil, for a null field.)
 
-### res:getlength(rowNumber, columnNumber)
+#### res:getlength(rowNumber, columnNumber)
 
 Returns the actual length of a field value in bytes. Row and column
 numbers start at 1.
@@ -685,11 +682,11 @@ is the same as strlen(). For binary format this is essential
 information. Note that one should not rely on fsize to obtain the actual
 data length.
 
-### res:nparams()
+#### res:nparams()
 
 Returns the number of parameters of a prepared statement.
 
-### res:paramtype(paramNumber)
+#### res:paramtype(paramNumber)
 
 Returns the data type of the indicated statement parameter. Parameter
 numbers start at 1.
@@ -697,13 +694,12 @@ numbers start at 1.
 This function is only useful when inspecting the result of
 describePrepared. For other types of queries it will return zero.
 
-Retrieving other result information
------------------------------------
+### Retrieving other result information
 
 These functions are used to extract other information from result
 objects.
 
-### res:cmdStatus()
+#### res:cmdStatus()
 
 Returns the command status tag from the SQL command that generated the
 result.
@@ -711,7 +707,7 @@ result.
 Commonly this is just the name of the command, but it might include
 additional data such as the number of rows processed.
 
-### res:cmdTuples()
+#### res:cmdTuples()
 
 Returns the number of rows affected by the SQL command.
 
@@ -723,7 +719,7 @@ prepared query that contains an INSERT, UPDATE, or DELETE statement. If
 the command that generated the result was anything else, cmdTuples
 returns an empty string.
 
-### res:oidValue()
+#### res:oidValue()
 
 Returns the OID of the inserted row, if the SQL command was an INSERT
 that inserted exactly one row into a table that has OIDs, or a EXECUTE
@@ -732,16 +728,15 @@ this function returns InvalidOid. This function will also return
 InvalidOid if the table affected by the INSERT statement does not
 contain OIDs.
 
-### res:oidStatus()
+#### res:oidStatus()
 
 This function is deprecated in favor of oidValue and is not thread-safe.
 It returns a string with the OID of the inserted row, while oidValue
 returns the OID value.
 
-Escaping strings for inclusion in SQL commands
-----------------------------------------------
+### Escaping strings for inclusion in SQL commands
 
-### conn:escapeLiteral(str)
+#### conn:escapeLiteral(str)
 
 escapeLiteral escapes a string for use within an SQL command. This is
 useful when inserting data values as literal constants in SQL commands.
@@ -762,11 +757,11 @@ Note that it is not necessary nor correct to do escaping when a data
 value is passed as a separate parameter in execParams or its sibling
 routines.
 
-### conn:escapeString(str)
+#### conn:escapeString(str)
 
 Escape escapes string literals, much like escapeLiteral.
 
-### conn:escapeIdentifier(str)
+#### conn:escapeIdentifier(str)
 
 escapeIdentifier escapes a string for use as an SQL identifier, such as
 a table, column, or function name. This is useful when a user-supplied
@@ -784,7 +779,7 @@ double quotes.
 On error, escapeIdentifier returns nil and a suitable message is stored
 in the conn object.
 
-### conn:escapeBytea(str)
+#### conn:escapeBytea(str)
 
 Escapes binary data for use within an SQL command with the type `bytea`.
 As with <span>escapeString</span>, this is only used when inserting data
@@ -798,13 +793,13 @@ On error, nil is returned, and a suitable error message is stored in the
 `conn` object. Currently, the only possible error is insufficient memory
 for the result string.
 
-### conn:unescapeBytea(str)
+#### unescapeBytea(str)
 
 Converts a string representation of binary data into binary data — the
 reverse of escapeBytea. This is needed when retrieving bytea data in
 text format, but not when retrieving it in binary format.
 
-### Asynchronous command processing
+#### Asynchronous command processing
 
 The exec function is adequate for submitting commands in normal,
 synchronous applications. It has a few deficiencies, however, that can
@@ -834,7 +829,7 @@ sendDescribePrepared, and sendDescribePortal, which can be used with
 getResult to duplicate the functionality of execParams, prepare,
 execPrepared, describePrepared, and describePortal respectively.
 
-### conn:sendQuery(command)
+#### conn:sendQuery(command)
 
 Submits a command to the server without waiting for the result(s). true
 is returned if the command was successfully dispatched and false if not
@@ -846,7 +841,7 @@ to obtain the results. sendQuery cannot be called again (on the same
 connection) until getResult has returned a null pointer, indicating that
 the command is done.
 
-### conn:sendQueryParams(command \[\[, param\] ..\])
+#### conn:sendQueryParams(command \[\[, param\] ..\])
 
 Submits a command and separate parameters to the server without waiting
 for the result(s).
@@ -857,7 +852,7 @@ are handled identically to execParams. Like execParams, it will not work
 on 2.0-protocol connections, and it allows only one command in the query
 string.
 
-### conn:sendPrepare(stmtName, query \[\[, param\] ..\])
+#### conn:sendPrepare(stmtName, query \[\[, param\] ..\])
 
 Sends a request to create a prepared statement with the given
 parameters, without waiting for completion.
@@ -869,7 +864,7 @@ the prepared statement. The function’s parameters are handled
 identically to prepare. Like prepare, it will not work on 2.0-protocol
 connections.
 
-### conn:sendQueryPrepared(stmtName \[\[, param\] ..\])
+#### conn:sendQueryPrepared(stmtName \[\[, param\] ..\])
 
 Sends a request to execute a prepared statement with given parameters,
 without waiting for the result(s).
@@ -880,7 +875,7 @@ query string. The function’s parameters are handled identically to
 execPrepared. Like execPrepared, it will not work on 2.0-protocol
 connections.
 
-### conn:sendDescribePrepared(stmtName)
+#### conn:sendDescribePrepared(stmtName)
 
 Submits a request to obtain information about the specified prepared
 statement, without waiting for completion.
@@ -891,7 +886,7 @@ successful call, call getResult to obtain the results. The function’s
 parameters are handled identically to describePrepared. Like
 describePrepared, it will not work on 2.0-protocol connections.
 
-### conn:sendDescribePortal(portalName)
+#### conn:sendDescribePortal(portalName)
 
 Submits a request to obtain information about the specified portal,
 without waiting for completion.
@@ -902,7 +897,7 @@ call, call getResult to obtain the results. The function’s parameters
 are handled identically to describePortal. Like describePortal, it will
 not work on 2.0-protocol connections.
 
-### conn:getResult()
+#### conn:getResult()
 
 Waits for the next result from a prior sendQuery, sendQueryParams,
 sendPrepare, sendQueryPrepared, sendDescribePrepared, or
@@ -932,7 +927,7 @@ By itself, calling getResult will still cause the client to block until
 the server completes the next SQL command. This can be avoided by proper
 use of two more functions:
 
-### conn:consumeInput()
+#### conn:consumeInput()
 
 If input is available from the server, consume it.
 
@@ -949,7 +944,7 @@ read-ready indication to go away. The application can thus use
 consumeInput to clear the select() condition immediately, and then
 examine the results at leisure.
 
-### conn:isBusy()
+#### conn:isBusy()
 
 Returns true if a command is busy, that is, getResult would block
 waiting for input. A false return indicates that getResult can be called
@@ -983,7 +978,7 @@ application sends data via COPY IN, however.) To prevent this
 possibility and achieve completely nonblocking database operation, the
 following additional functions can be used.
 
-### conn:setnonblocking(arg)
+#### conn:setnonblocking(arg)
 
 Sets the nonblocking status of the connection.
 
@@ -997,14 +992,14 @@ called again.
 Note that exec does not honor nonblocking mode; if it is called, it will
 act in blocking fashion anyway.
 
-### conn:isnonblocking()
+#### conn:isnonblocking()
 
 Returns the blocking status of the database connection.
 
 Returns true if the connection is set to nonblocking mode and false if
 blocking.
 
-### conn:flush()
+#### conn:flush()
 
 Attempts to flush any queued output data to the server. Returns true if
 successful (or if the send queue is empty), nil if it failed for some
@@ -1017,8 +1012,7 @@ call it again; repeat until it returns true. Once PQflush returns true
 wait for the socket to be read-ready and then read the response as
 described above.
 
-Retrieving Query Results Row-By-Row
------------------------------------
+### Retrieving Query Results Row-By-Row
 
 Ordinarily, pgsql collects a SQL command’s entire result and returns it
 to the application as a single `result`. This can be unworkable for
@@ -1042,7 +1036,7 @@ until it returns nil.) All of these `result` objects will contain the
 same row description data (column names, types, etc) that an ordinary
 `result` object for the query would have.
 
-### conn:setSingleRowMode()
+#### conn:setSingleRowMode()
 
 Select single-row mode for the currently-executing query.
 
@@ -1055,15 +1049,13 @@ Otherwise the mode stays unchanged and the function returns false. In
 any case, the mode reverts to normal after completion of the current
 query.
 
-Canceling queries in progress
------------------------------
+### Canceling queries in progress
 
-### conn:cancel()
+#### conn:cancel()
 
 Requests that the server abandon processing of the current command.
 
-Asynchronous notification functions
------------------------------------
+### Asynchronous notification functions
 
 PostgreSQL offers asynchronous notification via the LISTEN and NOTIFY
 commands. A client session registers its interest in a particular
@@ -1077,7 +1069,7 @@ pgsql applications submit LISTEN, UNLISTEN, and NOTIFY commands as
 ordinary SQL commands. The arrival of NOTIFY messages can subsequently
 be detected by calling notifies.
 
-### conn:notifies()
+#### conn:notifies()
 
 The function notifies returns the next notification from a list of
 unhandled notification messages received from the server. It returns nil
@@ -1098,8 +1090,7 @@ exec. You should, however, remember to check notifies after each
 getResult or exec, to see if any notifications came in during the
 processing of the command.
 
-Functions associated with the COPY command
-------------------------------------------
+### Functions associated with the COPY command
 
 The COPY command in PostgreSQL has options to read from or write to the
 network connection used by pgsql. The functions described in this
@@ -1134,18 +1125,18 @@ additional data about the COPY operation that is starting. This
 additional data is available using functions that are also used in
 connection with query results:
 
-### res:nfields()
+#### res:nfields()
 
 Returns the number of columns (fields) to be copied.
 
-### res:binaryTuples()
+#### res:binaryTuples()
 
 false indicates the overall copy format is textual (rows separated by
 newlines, columns separated by separator characters, etc). true
 indicates the overall copy format is binary. See COPY for more
 information.
 
-### res:fformat()
+#### res:fformat()
 
 Returns the format code (0 for text, 1 for binary) associated with each
 column of the copy operation. The per-column format codes will always be
@@ -1154,13 +1145,12 @@ support both text and binary columns. (However, as of the current
 implementation of COPY, only binary columns appear in a binary copy; so
 the per-column formats always match the overall format at present.)
 
-Functions for sending COPY data
--------------------------------
+### Functions for sending COPY data
 
 These functions are used to send data during COPY FROM STDIN. They will
 fail if called when the connection is not in COPY\_IN state.
 
-### conn:putCopyData(buffer)
+#### conn:putCopyData(buffer)
 
 Sends data to the server during COPY\_IN state.
 
@@ -1176,7 +1166,7 @@ convenient size. Buffer-load boundaries have no semantic significance
 when sending. The contents of the data stream must match the data format
 expected by the COPY command.
 
-### conn:putCopyEnd(errormsg)
+#### conn:putCopyEnd(errormsg)
 
 Sends end-of-data indication to the server during COPY\_IN state.
 
@@ -1198,13 +1188,12 @@ After successfully calling putCopyEnd, call getResult to obtain the
 final result status of the COPY command. One can wait for this result to
 be available in the usual way. Then return to normal operation.
 
-Functions for receiving COPY data
----------------------------------
+### Functions for receiving COPY data
 
 These functions are used to receive data during COPY TO STDOUT. They
 will fail if called when the connection is not in COPY\_OUT state.
 
-### conn:getCopyData(async)
+#### conn:getCopyData(async)
 
 Receives data from the server during COPY\_OUT state.
 
@@ -1233,18 +1222,17 @@ After getCopyData returns -1, call getResult to obtain the final result
 status of the COPY command. One can wait for this result to be available
 in the usual way. Then return to normal operation.
 
-Control functions
------------------
+### Control functions
 
-### conn:clientEncoding()
+#### conn:clientEncoding()
 
 Returns the client encoding.
 
-### conn:setClientEncoding(encoding)
+#### conn:setClientEncoding(encoding)
 
 Sets the client encoding.
 
-### conn:setErrorVerbosity()
+#### conn:setErrorVerbosity()
 
 Determines the verbosity of messages returned by errorMessage and
 resultErrorMessage.
@@ -1258,19 +1246,18 @@ VERBOSE mode includes all available fields. Changing the verbosity does
 not affect the messages available from already-existing result objects,
 only subsequently-created ones.
 
-### conn:trace(file)
+#### conn:trace(file)
 
 Enables tracing of the client/server communication to a debugging file
 stream obtaining via io.open().
 
-### conn:untrace()
+#### conn:untrace()
 
 Disables tracing started by conn:trace().
 
-Miscellaneous functions
------------------------
+### Miscellaneous functions
 
-### encryptPassword()
+#### encryptPassword()
 
 Prepares the encrypted form of a PostgreSQL password.
 
@@ -1284,7 +1271,7 @@ name of the user it is for. The return value is a string allocated by
 malloc, or NULL if out of memory. The caller can assume the string
 doesn’t contain any special characters that would require escaping.
 
-### libVersion()
+#### libVersion()
 
 Return the version of the underlying libpq that is being used.
 
@@ -1299,8 +1286,7 @@ numbers into two-decimal-digit numbers and appending them together. For
 example, version 9.1 will be returned as 90100, and version 9.1.2 will
 be returned as 90102 (leading zeroes are not shown).
 
-Notice processing
------------------
+### Notice processing
 
 Notice and warning messages generated by the server are not returned by
 the query execution functions, since they do not imply failure of the
@@ -1317,9 +1303,9 @@ processor for printing. However, an application that chooses to provide
 its own notice receiver will typically ignore the notice processor layer
 and just do all the work in the notice receiver.
 
-### conn:setNoticeReceiver()
+#### conn:setNoticeReceiver()
 
-### conn:setNoticeProcessor()
+#### conn:setNoticeProcessor()
 
 The function setNoticeReceiver sets or examines the current notice
 receiver for a connection object. Similarly, setNoticeProcessor sets or
@@ -1354,10 +1340,9 @@ result objects made from it exist. At creation of a result, the conn’s
 current notice handling pointers are copied into the result for possible
 use by functions like getvalue.
 
-SSL Support
------------
+### SSL Support
 
-### initOpenSSL(do\_ssl, do\_crypt)
+#### initOpenSSL(do\_ssl, do\_crypt)
 
 Allows applications to select which security libraries to initialize.
 
@@ -1373,10 +1358,9 @@ the appropriate parameter(s) before first opening a database connection.
 Also be sure that you have done that initialization before opening a
 database connection.
 
-Large objects
--------------
+### Large objects
 
-### conn:lo\_create(lobjId)
+#### conn:lo\_create(lobjId)
 
 Creates a new large object. The OID to be assigned can be specified by
 lobjId; if so, failure occurs if that OID is already in use for some
@@ -1390,7 +1374,7 @@ an older server version, it will fail and return InvalidOid.
 
 To import an operating system file as a large object, call
 
-### conn:lo\_import(filename)
+#### conn:lo\_import(filename)
 
 filename specifies the operating system name of the file to be imported
 as a large object. The return value is the OID that was assigned to the
@@ -1401,7 +1385,7 @@ application.
 
 The function
 
-### conn:lo\_import\_with\_oid(filename, lobjId)
+#### conn:lo\_import\_with\_oid(filename, lobjId)
 
 also imports a new large object. The OID to be assigned can be specified
 by lobjId; if so, failure occurs if that OID is already in use for some
@@ -1416,7 +1400,7 @@ before, it will fail and return InvalidOid.
 
 To export a large object into an operating system file, call
 
-### conn:lo\_export(lobjId, filename)
+#### conn:lo\_export(lobjId, filename)
 
 The lobjId argument specifies the OID of the large object to export and
 the filename argument specifies the operating system name of the file.
@@ -1425,7 +1409,7 @@ the server. Returns true on success, false on failure.
 
 To open an existing large object for reading or writing, call
 
-### conn:lo\_open(lobjId, mode)
+#### fd = conn:lo\_open(lobjId, mode)
 
 The lobjId argument specifies the OID of the large object to open. The
 mode bits control whether the object is opened for reading (INV\_READ),
@@ -1449,17 +1433,14 @@ writes of the current transaction. This is similar to the behavior of
 REPEATABLE READ versus READ COMMITTED transaction modes for ordinary SQL
 SELECT commands.
 
-Large object functions
-----------------------
-
 The function
 
-### lo:write(buf, len)
+#### conn:lo\_write(fd, buf)
 
-writes len bytes from buf (which must be of size len) to a large object.
-The number of bytes actually written is returned (in the current
-implementation, this will always equal len unless there is an error). In
-the event of an error, the return value is -1.
+writes all bytes from buf to a large object. The number of bytes
+actually written is returned (in the current implementation, this will
+always equal \#buf unless there is an error). In the event of an error,
+the return value is -1.
 
 Although the len parameter is declared as size\_t, this function will
 reject length values larger than INT\_MAX. In practice, it’s best to
@@ -1467,7 +1448,7 @@ transfer data in chunks of at most a few megabytes anyway.
 
 The function
 
-### lo:read(len)
+#### conn:lo\_read(fd, len)
 
 reads up to len bytes from large object descriptor fd into buf (which
 must be of size len). The fd argument must have been returned by a
@@ -1482,7 +1463,7 @@ transfer data in chunks of at most a few megabytes anyway.
 To change the current read or write location associated with a large
 object descriptor, call
 
-### lo:lseek(offset, whence)
+#### conn:lo\_lseek(fd, offset, whence)
 
 This function moves the current location pointer for the large object
 descriptor identified by fd to the new location specified by offset. The
@@ -1493,38 +1474,38 @@ end). The return value is the new location pointer, or -1 on error.
 When dealing with large objects that might exceed 2GB in size, instead
 use
 
-### lo:lseek64(iffset, whence)
+#### conn:lo\_lseek64(fd, offset, whence)
 
 This function has the same behavior as lo:lseek, but it can accept an
 offset larger than 2GB and/or deliver a result larger than 2GB. Note
 that l:lseek will fail if the new location pointer would be greater than
 2GB.
 
-Lo:lseek64 is new as of PostgreSQL 9.3. If this function is run against
-an older server version, it will fail and return -1.
+conn:lo\_lseek64 is new as of PostgreSQL 9.3. If this function is run
+against an older server version, it will fail and return -1.
 
 To obtain the current read or write location of a large object
 descriptor, call
 
-### lo:tell()
+#### conn:lo\_tell(fd)
 
 If there is an error, the return value is -1.
 
 When dealing with large objects that might exceed 2GB in size, instead
 use
 
-### lo:tell64()
+#### conn:lo\_tell64(fd)
 
 This function has the same behavior as lo\_tell, but it can deliver a
 result larger than 2GB. Note that lo\_tell will fail if the current
 read/write location is greater than 2GB.
 
-lo\_tell64 is new as of PostgreSQL 9.3. If this function is run against
-an older server version, it will fail and return -1.
+conn:lo\_tell64 is new as of PostgreSQL 9.3. If this function is run
+against an older server version, it will fail and return -1.
 
 To truncate a large object to a given length, call
 
-### lo:truncate(len)
+#### conn:lo\_truncate(fd, len)
 
 This function truncates the large object to length len. If len is
 greater than the large object’s current length, the large object is
@@ -1540,32 +1521,31 @@ reject length values larger than INT\_MAX.
 When dealing with large objects that might exceed 2GB in size, instead
 use
 
-### lo:truncate64(len)
+#### conn:lo\_truncate64(fd, len)
 
 This function has the same behavior as lo\_truncate, but it can accept a
 len value exceeding 2GB.
 
-lo\_truncate is new as of PostgreSQL 8.3; if this function is run
+conn:lo\_truncate64 is new as of PostgreSQL 8.3; if this function is run
 against an older server version, it will fail and return -1.
 
-lo\_truncate64 is new as of PostgreSQL 9.3; if this function is run
+conn:lo\_truncate64 is new as of PostgreSQL 9.3; if this function is run
 against an older server version, it will fail and return -1.
 
 A large object descriptor can be closed by calling
 
-### lo:close()
+#### conn:lo\_close(fd)
 
-Notify functions
-----------------
+### Notify functions
 
-### notify:relname()
+#### notify:relname()
 
 Return the relname field of a notification.
 
-### notify:pid()
+#### notify:pid()
 
 Return the pid field of a notification.
 
-### notify:extra()
+#### notify:extra()
 
 Return the extra data field of a notification.
