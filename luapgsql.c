@@ -569,7 +569,6 @@ conn_execParams(lua_State *L)
 		paramFormats = NULL;
 	}
 	res = lua_newuserdata(L, sizeof(PGresult *));
-	*res = NULL;
 	luaL_getmetatable(L, RES_METATABLE);
 	lua_setmetatable(L, -2);
 	*res = PQexecParams(conn, command, sqlParams, paramTypes,
@@ -617,7 +616,6 @@ conn_prepare(lua_State *L)
 		paramTypes = NULL;
 
 	res = lua_newuserdata(L, sizeof(PGresult *));
-	*res = NULL;
 	luaL_getmetatable(L, RES_METATABLE);
 	lua_setmetatable(L, -2);
 	*res = PQprepare(conn, command, name, sqlParams, paramTypes);
@@ -667,7 +665,6 @@ conn_execPrepared(lua_State *L)
 		paramFormats = NULL;
 	}
 	res = lua_newuserdata(L, sizeof(PGresult *));
-	*res = NULL;
 	luaL_getmetatable(L, RES_METATABLE);
 	lua_setmetatable(L, -2);
 	*res = PQexecPrepared(conn, command, sqlParams,
@@ -687,7 +684,6 @@ conn_describePrepared(lua_State *L)
 	name = luaL_checkstring(L, 2);
 
 	res = lua_newuserdata(L, sizeof(PGresult *));
-	*res = NULL;
 	luaL_getmetatable(L, RES_METATABLE);
 	lua_setmetatable(L, -2);
 	*res = PQdescribePrepared(conn, name);
@@ -705,7 +701,6 @@ conn_describePortal(lua_State *L)
 	name = luaL_checkstring(L, 2);
 
 	res = lua_newuserdata(L, sizeof(PGresult *));
-	*res = NULL;
 	luaL_getmetatable(L, RES_METATABLE);
 	lua_setmetatable(L, -2);
 	*res = PQdescribePortal(conn, name);
