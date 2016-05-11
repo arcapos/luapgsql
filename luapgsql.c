@@ -86,17 +86,16 @@ gcmem_clear(lua_State *L)
 /*
  * Create a new connection object with a uservalue table
  */
-static PGconn **
-pgsql_conn_new(lua_State *L) {
+static void
+pgsql_conn_new(lua_State *L, PGconn *conn) {
 	PGconn **data;
 
 	data = lua_newuserdata(L, sizeof(PGconn *));
-	*data = NULL;
+	*data = conn;
 	lua_newtable(L);
 	lua_setuservalue(L, -2);
 	luaL_getmetatable(L, CONN_METATABLE);
 	lua_setmetatable(L, -2);
-	return data;
 }
 
 /*
@@ -105,11 +104,11 @@ pgsql_conn_new(lua_State *L) {
 static int
 pgsql_connectdb(lua_State *L)
 {
-	PGconn **data;
+	PGconn *conn;
 
-	data = pgsql_conn_new(L);
-	*data = PQconnectdb(luaL_checkstring(L, 1));
-	if (*data == NULL)
+	if ((conn = PQconnectdb(luaL_checkstring(L, 1))) != NULL)
+		pgsql_conn_new(L, conn);
+	else
 		lua_pushnil(L);
 	return 1;
 }
@@ -117,11 +116,11 @@ pgsql_connectdb(lua_State *L)
 static int
 pgsql_connectStart(lua_State *L)
 {
-	PGconn **data;
+	PGconn *conn;
 
-	data = pgsql_conn_new(L);
-	*data = PQconnectStart(luaL_checkstring(L, 1));
-	if (*data == NULL)
+	if ((conn = PQconnectStart(luaL_checkstring(L, 1))) != NULL)
+		pgsql_conn_new(L, conn);
+	else
 		lua_pushnil(L);
 	return 1;
 }
