@@ -1844,10 +1844,9 @@ pgsql_lo_close(lua_State *L)
 	largeObject *o;
 
 	o = luaL_checkudata(L, 1, LO_METATABLE);
-	if (o->fd > 0)  {
-		if (PQstatus(o->conn) == CONNECTION_OK) {
+	if (o->fd >= 0)  {
+		if (PQstatus(o->conn) == CONNECTION_OK)
 			lo_close(o->conn, o->fd);
-		}
 		o->fd = -1;
 	}
 	return 0;
