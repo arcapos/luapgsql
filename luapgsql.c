@@ -181,6 +181,25 @@ pgsql_encryptPassword(lua_State *L)
 }
 
 static int
+pgsql_unescapeBytea(lua_State *L)
+{
+	unsigned char **p;
+	size_t len;
+	const char *bytea;
+
+	bytea = luaL_checkstring(L, 1);
+	p = gcmalloc(L, sizeof(char *));
+	*p = PQunescapeBytea((const unsigned char *)bytea, &len);
+	if (*p == NULL)
+		lua_pushnil(L);
+	else {
+		lua_pushlstring(L, (const char *)*p, len);
+		gcfree(p);
+	}
+	return 1;
+}
+
+static int
 pgsql_initOpenSSL(lua_State *L)
 {
 	PQinitOpenSSL(lua_toboolean(L, 1), lua_toboolean(L, 2));
@@ -792,25 +811,6 @@ conn_escapeBytea(lua_State *L)
 	lua_pushinteger(L, to_length);
 	gcfree(p);
 	return 2;
-}
-
-static int
-conn_unescapeBytea(lua_State *L)
-{
-	unsigned char **p;
-	size_t len;
-	const char *bytea;
-
-	bytea = luaL_checkstring(L, 2);
-	p = gcmalloc(L, sizeof(char *));
-	*p = PQunescapeBytea((const unsigned char *)bytea, &len);
-	if (*p == NULL)
-		lua_pushnil(L);
-	else {
-		lua_pushlstring(L, (const char *)*p, len);
-		gcfree(p);
-	}
-	return 1;
 }
 
 /*
@@ -2102,6 +2102,7 @@ luaopen_pgsql(lua_State *L)
 		{ "ping", pgsql_ping },
 #endif
 		{ "encryptPassword", pgsql_encryptPassword },
+		{ "unescapeBytea", pgsql_unescapeBytea },
 
 		/* SSL support */
 		{ "initOpenSSL", pgsql_initOpenSSL },
@@ -2145,7 +2146,6 @@ luaopen_pgsql(lua_State *L)
 		{ "escapeLiteral", conn_escapeLiteral },
 		{ "escapeIdentifier", conn_escapeIdentifier },
 		{ "escapeBytea", conn_escapeBytea },
-		{ "unescapeBytea", conn_unescapeBytea },
 		{ "exec", conn_exec },
 		{ "execParams", conn_execParams },
 		{ "prepare", conn_prepare },
