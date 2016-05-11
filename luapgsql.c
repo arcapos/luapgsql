@@ -169,9 +169,12 @@ static int
 pgsql_encryptPassword(lua_State *L)
 {
 	char const **pw;
+	const char *passwd, *user;
 
+	passwd = luaL_checkstring(L, 1);
+	user = luaL_checkstring(L, 2);
 	pw = gcmalloc(L, sizeof(char *));
-	*pw = PQencryptPassword(luaL_checkstring(L, 1), luaL_checkstring(L, 2));
+	*pw = PQencryptPassword(passwd, user);
 	lua_pushstring(L, *pw);
 	gcfree(pw);
 	return 1;
@@ -1852,7 +1855,8 @@ pgsql_lo_clear(lua_State *L)
 
 	o = luaL_checkudata(L, 1, LO_METATABLE);
 	if (*o)  {
-		lo_close((*o)->conn, (*o)->fd);
+		if (PQstatus((*o)->conn) == CONNECTION_OK)
+			lo_close((*o)->conn, (*o)->fd);
 		*o = NULL;
 	}
 	return 0;
