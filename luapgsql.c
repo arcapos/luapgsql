@@ -218,7 +218,6 @@ conn_finish(lua_State *L)
 		lua_pushlightuserdata(L, *conn);
 		lua_gettable(L, LUA_REGISTRYINDEX);
 		if (lua_isnil(L, -1)) {
-			printf("PQfinish\n");
 			PQfinish(*conn);
 			*conn = NULL;
 			/* clean out now invalidated keys from uservalue */
