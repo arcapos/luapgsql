@@ -1434,6 +1434,40 @@ conn_lo_close(lua_State *L)
 	return 1;
 }
 
+static int
+conn_lo_unlink(lua_State *L)
+{
+	lua_pushboolean(L,
+	    lo_unlink(pgsql_conn(L, 1), luaL_checkinteger(L, 2)) == 1);
+	return 1;
+}
+
+#if PG_VERSION_NUM >= 90300
+static int
+conn_lo_lseek64(lua_State *L)
+{
+	lua_pushinteger(L, lo_lseek64(pgsql_conn(L, 1), luaL_checkinteger(L, 2),
+	    luaL_checkinteger(L, 3), luaL_checkinteger(L, 4)));
+	return 1;
+}
+
+static int
+conn_lo_tell64(lua_State *L)
+{
+	lua_pushinteger(L,
+	    lo_tell64(pgsql_conn(L, 1), luaL_checkinteger(L, 2)));
+	return 1;
+}
+
+static int
+conn_lo_truncate64(lua_State *L)
+{
+	lua_pushinteger(L, lo_truncate64(pgsql_conn(L, 1),
+	    luaL_checkinteger(L, 2), luaL_checkinteger(L, 3)));
+	return 1;
+}
+#endif
+
 /*
  * Result set functions
  */
@@ -2206,6 +2240,13 @@ luaopen_pgsql(lua_State *L)
 		{ "lo_tell", conn_lo_tell },
 		{ "lo_truncate", conn_lo_truncate },
 		{ "lo_close", conn_lo_close },
+		{ "lo_unlink", conn_lo_unlink },
+#if PG_VERSION_NUM >= 90300
+		{ "lo_lseek64", conn_lo_lseek64 },
+		{ "lo_tell64", conn_lo_tell64 },
+		{ "lo_truncate64", conn_lo_truncate64 },
+#endif
+
 		{ NULL, NULL }
 	};
 	struct luaL_Reg res_methods[] = {

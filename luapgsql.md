@@ -1536,6 +1536,13 @@ A large object descriptor can be closed by calling
 
 #### conn:lo\_close(fd)
 
+To remove a large object from the database, call
+
+#### conn:lo\_unlink(lobjid)
+
+The lobjId argument specifies the OID of the large object to remove.
+Returns 1 if successful, -1 on failure.
+
 ### Notify functions
 
 #### notify:relname()
