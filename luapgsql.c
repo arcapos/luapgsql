@@ -799,10 +799,11 @@ conn_unescapeBytea(lua_State *L)
 {
 	unsigned char **p;
 	size_t len;
+	const char *bytea;
 
+	bytea = luaL_checkstring(L, 2);
 	p = gcmalloc(L, sizeof(char *));
-	*p = PQunescapeBytea((const unsigned char *)luaL_checkstring(L, 2),
-	    &len);
+	*p = PQunescapeBytea((const unsigned char *)bytea, &len);
 	if (*p == NULL)
 		lua_pushnil(L);
 	else {
