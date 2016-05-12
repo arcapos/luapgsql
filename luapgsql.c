@@ -265,7 +265,7 @@ conn_resetStart(lua_State *L)
 static int
 conn_resetPoll(lua_State *L)
 {
-	lua_pushboolean(L, PQresetPoll(pgsql_conn(L, 1)));
+	lua_pushinteger(L, PQresetPoll(pgsql_conn(L, 1)));
 	return 1;
 }
 
@@ -1064,16 +1064,16 @@ conn_putCopyEnd(lua_State *L)
 static int
 conn_getCopyData(lua_State *L)
 {
-	int res;
-	char *data;
+	int len;
+	char **data;
 
-	res = PQgetCopyData(pgsql_conn(L, 1), &data, 0);
-	if (res > 0)
-		lua_pushstring(L, data);
+	data = gcmalloc(L, sizeof(char *));
+	len = PQgetCopyData(pgsql_conn(L, 1), data, 0);
+	if (len > 0)
+		lua_pushlstring(L, *data, len);
 	else
-		lua_pushnil(L);
-	if (data)
-		PQfreemem(data);
+		lua_pushnil(L);	/* copy done (-1) or error occured (-2) */
+	gcfree(data);
 	return 1;
 }
 
