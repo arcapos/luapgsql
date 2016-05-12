@@ -258,14 +258,14 @@ conn_reset(lua_State *L)
 static int
 conn_resetStart(lua_State *L)
 {
-	lua_pushinteger(L, PQresetStart(pgsql_conn(L, 1)));
+	lua_pushboolean(L, PQresetStart(pgsql_conn(L, 1)));
 	return 1;
 }
 
 static int
 conn_resetPoll(lua_State *L)
 {
-	lua_pushinteger(L, PQresetPoll(pgsql_conn(L, 1)));
+	lua_pushboolean(L, PQresetPoll(pgsql_conn(L, 1)));
 	return 1;
 }
 
