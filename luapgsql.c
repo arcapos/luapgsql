@@ -1064,15 +1064,20 @@ conn_putCopyEnd(lua_State *L)
 static int
 conn_getCopyData(lua_State *L)
 {
-	int len;
+	int async, len;
 	char **data;
 
 	data = gcmalloc(L, sizeof(char *));
-	len = PQgetCopyData(pgsql_conn(L, 1), data, 0);
+	async = lua_toboolean(L, 2);
+	len = PQgetCopyData(pgsql_conn(L, 1), data, async);
 	if (len > 0)
 		lua_pushlstring(L, *data, len);
-	else
-		lua_pushnil(L);	/* copy done (-1) or error occured (-2) */
+	else if (len == 0)	/* no data yet */
+		lua_pushboolean(L, 0);
+	else if (len == -1)	/* copy done */
+		lua_pushboolean(L, 1);
+	else			/* an error occurred */
+		lua_pushnil(L);
 	gcfree(data);
 	return 1;
 }

@@ -1202,25 +1202,24 @@ Data is always returned one data row at a time; if only a partial row is
 available, it is not returned. Successful return of a data row involves
 allocating a chunk of memory to hold the data.
 
-When a row is successfully returned, the return value is the number of
-data bytes in the row (this will always be greater than zero). The
-returned string is always null-terminated, though this is probably only
-useful for textual COPY. A result of zero indicates that the COPY is
-still in progress, but no row is yet available (this is only possible
-when async is true). A result of -1 indicates that the COPY is done. A
-result of -2 indicates that an error occurred (consult errorMessage for
-the reason).
+When a row is successfully returned, the return value is the data in the
+row (this will always be greater than zero). The returned string is
+always null-terminated, though this is probably only useful for textual
+COPY. A result of false indicates that the COPY is still in progress,
+but no row is yet available (this is only possible when async is true).
+A result of true indicates that the COPY is done. A result of nil
+indicates that an error occurred (consult errorMessage for the reason).
 
-When async is true (not zero), getCopyData will not block waiting for
-input; it will return zero if the COPY is still in progress but no
-complete row is available. (In this case wait for read-ready and then
-call consumeInput before calling getCopyData again.) When async is false
-(zero), getCopyData will block until data is available or the operation
+When async is true, getCopyData will not block waiting for input; it
+will return false if the COPY is still in progress but no complete row
+is available. (In this case wait for read-ready and then call
+consumeInput before calling getCopyData again.) When async is false,
+getCopyData will block until data is available or the operation
 completes.
 
-After getCopyData returns -1, call getResult to obtain the final result
-status of the COPY command. One can wait for this result to be available
-in the usual way. Then return to normal operation.
+After getCopyData returns true, call getResult to obtain the final
+result status of the COPY command. One can wait for this result to be
+available in the usual way. Then return to normal operation.
 
 ### Control functions
 
