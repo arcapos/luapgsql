@@ -1199,16 +1199,14 @@ Receives data from the server during COPY\_OUT state.
 
 Attempts to obtain another row of data from the server during a COPY.
 Data is always returned one data row at a time; if only a partial row is
-available, it is not returned. Successful return of a data row involves
-allocating a chunk of memory to hold the data.
+available, it is not returned.
 
 When a row is successfully returned, the return value is the data in the
-row as a string with length &gt; zero. The returned string is always
-null-terminated, though this is probably only useful for textual COPY. A
-result of false indicates that the COPY is still in progress, but no row
-is yet available (this is only possible when async is true). A result of
-true indicates that the COPY is done. A result of nil indicates that an
-error occurred (consult errorMessage for the reason).
+row as a string. A result of false indicates that the COPY is still in
+progress, but no row is yet available (this is only possible when async
+is true). A result of true indicates that the COPY is done. A result of
+nil indicates that an error occurred (consult errorMessage for the
+reason).
 
 When async is true, getCopyData will not block waiting for input; it
 will return false if the COPY is still in progress but no complete row
