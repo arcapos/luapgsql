@@ -474,8 +474,9 @@ get_sql_params(lua_State *L, int t, int n, Oid *paramTypes, char **paramValues,
 			paramValues[n] = lua_newuserdata(L, sizeof(char));
 			*(char *)paramValues[n] = lua_toboolean(L, t);
 			paramLengths[n] = 1;
-			paramFormats[n] = 1;
 		}
+		if (paramFormats != NULL)
+			paramFormats[n] = 1;
 		n = 1;
 		break;
 	case LUA_TNUMBER:
@@ -502,8 +503,9 @@ get_sql_params(lua_State *L, int t, int n, Oid *paramTypes, char **paramValues,
 			paramValues[n] = lua_newuserdata(L, sizeof(uint64_t));
 			*(uint64_t *)paramValues[n] = htobe64(swap.i);
 			paramLengths[n] = sizeof(uint64_t);
-			paramFormats[n] = 1;
 		}
+		if (paramFormats != NULL)
+			paramFormats[n] = 1;
 		n = 1;
 		break;
 	case LUA_TSTRING:
@@ -520,15 +522,18 @@ get_sql_params(lua_State *L, int t, int n, Oid *paramTypes, char **paramValues,
 			 * the last character.
 			 */
 			memcpy(paramValues[n], s, len + 1);
-			paramFormats[n] = 0;
 		}
+		if (paramFormats != NULL)
+			paramFormats[n] = 0;
 		n = 1;
 		break;
 	case LUA_TNIL:
-		if (paramValues != NULL) {
+		if (paramTypes != NULL)
+			paramTypes[n] = 0;
+		if (paramValues != NULL)
 			paramValues[n] = NULL;
+		if (paramFormats != NULL)
 			paramFormats[n] = 0;
-		}
 		n = 1;
 		break;
 	case LUA_TTABLE:
