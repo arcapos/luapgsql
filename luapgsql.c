@@ -118,12 +118,8 @@ pgsql_connectdb(lua_State *L)
 	cstr = luaL_checkstring(L, 1);
 	data = pgsql_conn_new(L);
 
-	if (data) {
-		*data = PQconnectdb(cstr);
-
-		if (*data == NULL)
-			lua_pushnil(L);
-	} else
+	*data = PQconnectdb(cstr);
+	if (*data == NULL)
 		lua_pushnil(L);
 	return 1;
 }
@@ -600,8 +596,7 @@ conn_execParams(lua_State *L)
 		    "number of parameters must be between 0 and 65535");
 
 	if (sqlParams) {
-		if (!lua_checkstack(L, 4 + selem))
-			luaL_error(L, "out of stack space");
+		luaL_checkstack(L, 4 + selem, "out of stack space");
 
 		paramTypes = lua_newuserdata(L, sqlParams * sizeof(Oid));
 		paramValues = lua_newuserdata(L, sqlParams * sizeof(char *));
@@ -620,8 +615,7 @@ conn_execParams(lua_State *L)
 		paramLengths = NULL;
 		paramFormats = NULL;
 	}
-	if (!lua_checkstack(L, 1))
-		luaL_error(L, "out of stack space");
+	luaL_checkstack(L, 1, "out of stack space");
 	res = lua_newuserdata(L, sizeof(PGresult *));
 	luaL_getmetatable(L, RES_METATABLE);
 	lua_setmetatable(L, -2);
@@ -703,8 +697,7 @@ conn_execPrepared(lua_State *L)
 		    "number of parameters must be between 0 and 65535");
 
 	if (sqlParams) {
-		if (!lua_checkstack(L, 3 + selem))
-			luaL_error(L, "out of stack space");
+		luaL_checkstack(L, 3 + selem, "out of stack space");
 
 		paramValues = lua_newuserdata(L, sqlParams * sizeof(char *));
 		paramLengths = lua_newuserdata(L, sqlParams * sizeof(int));
@@ -720,8 +713,7 @@ conn_execPrepared(lua_State *L)
 		paramLengths = NULL;
 		paramFormats = NULL;
 	}
-	if (!lua_checkstack(L, 1))
-		luaL_error(L, "out of stack space");
+	luaL_checkstack(L, 1, "out of stack space");
 
 	res = lua_newuserdata(L, sizeof(PGresult *));
 	luaL_setmetatable(L, RES_METATABLE);
@@ -874,8 +866,7 @@ conn_sendQueryParams(lua_State *L)
 		sqlParams += count;
 	}
 	if (sqlParams) {
-		if (!lua_checkstack(L, 4 + selem))
-			luaL_error(L, "out of stack space");
+		luaL_checkstack(L, 4 + selem, "out of stack space");
 
 		paramTypes = lua_newuserdata(L, sqlParams * sizeof(Oid));
 		paramValues = lua_newuserdata(L, sqlParams * sizeof(char *));
@@ -957,8 +948,7 @@ conn_sendQueryPrepared(lua_State *L)
 		sqlParams += count;
 	}
 	if (sqlParams) {
-		if (!lua_checkstack(L, 3 + selem))
-			luaL_error(L, "out of stack space");
+		luaL_checkstack(L, 3 + selem, "out of stack space");
 
 		paramValues = lua_newuserdata(L, sqlParams * sizeof(char *));
 		paramLengths = lua_newuserdata(L, sqlParams * sizeof(int));
@@ -1756,8 +1746,7 @@ res_fields_iterator(lua_State *L)
 
 	t->row++;
 
-	if (!lua_checkstack(L, PQnfields(t->res)))
-		luaL_error(L, "out of stack space");
+	luaL_checkstack(L, PQnfields(t->res), "out of stack space");
 	if (t->row == PQntuples(t->res))
 		for (n = 0; n < PQnfields(t->res); n++)
 			lua_pushnil(L);
@@ -1852,7 +1841,7 @@ res_clear(lua_State *L)
 	PGresult **r;
 
 	r = luaL_checkudata(L, 1, RES_METATABLE);
-	if (r && *r)  {
+	if (r && *r) {
 		PQclear(*r);
 		*r = NULL;
 	}
@@ -1898,7 +1887,7 @@ notify_clear(lua_State *L)
 	PGnotify **n;
 
 	n = luaL_checkudata(L, 1, NOTIFY_METATABLE);
-	if (*n)  {
+	if (*n) {
 		PQfreemem(*n);
 		*n = NULL;
 	}
@@ -2103,7 +2092,7 @@ static struct constant pgsql_constant[] = {
 	{ "PGRES_NONFATAL_ERROR",	PGRES_NONFATAL_ERROR },
 	{ "PGRES_FATAL_ERROR",		PGRES_FATAL_ERROR },
 
-	/* Polling status  */
+	/* Polling status */
 	{ "PGRES_POLLING_FAILED",	PGRES_POLLING_FAILED },
 	{ "PGRES_POLLING_READING",	PGRES_POLLING_READING },
 	{ "PGRES_POLLING_WRITING",	PGRES_POLLING_WRITING },
