@@ -1841,7 +1841,7 @@ res_clear(lua_State *L)
 	PGresult **r;
 
 	r = luaL_checkudata(L, 1, RES_METATABLE);
-	if (r && *r) {
+	if (*r) {
 		PQclear(*r);
 		*r = NULL;
 	}
