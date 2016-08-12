@@ -467,13 +467,9 @@ conn_exec(lua_State *L)
 }
 
 static void
-get_sql_params(lua_State *L, int t, int n, Oid *paramTypes, char **paramValues,
-    int *paramLengths, int *paramFormats, int *count, int *selem)
+get_param(lua_State *L, int t, int n, Oid *paramTypes, char **paramValues,
+    int *paramLengths, int *paramFormats)
 {
-	int k, c, s, ns;
-
-	s = 0;
-	t = lua_absindex(L, t);
 	switch (lua_type(L, t)) {
 	case LUA_TBOOLEAN:
 		if (paramTypes != NULL)
@@ -485,7 +481,6 @@ get_sql_params(lua_State *L, int t, int n, Oid *paramTypes, char **paramValues,
 		}
 		if (paramFormats != NULL)
 			paramFormats[n] = 1;
-		n = s = 1;
 		break;
 	case LUA_TNUMBER:
 		if (paramTypes != NULL) {
@@ -514,7 +509,6 @@ get_sql_params(lua_State *L, int t, int n, Oid *paramTypes, char **paramValues,
 		}
 		if (paramFormats != NULL)
 			paramFormats[n] = 1;
-		n = s = 1;
 		break;
 	case LUA_TSTRING:
 		if (paramTypes != NULL)
@@ -533,7 +527,6 @@ get_sql_params(lua_State *L, int t, int n, Oid *paramTypes, char **paramValues,
 		}
 		if (paramFormats != NULL)
 			paramFormats[n] = 0;
-		n = s = 1;
 		break;
 	case LUA_TNIL:
 		if (paramTypes != NULL)
@@ -542,30 +535,12 @@ get_sql_params(lua_State *L, int t, int n, Oid *paramTypes, char **paramValues,
 			paramValues[n] = NULL;
 		if (paramFormats != NULL)
 			paramFormats[n] = 0;
-		n = 1;
-		break;
-	case LUA_TTABLE:
-		for (k = 1; ; k++) {
-			lua_pushinteger(L, k);
-			lua_gettable(L, t);
-			if (lua_isnil(L, -1))
-				break;
-			c = ns = 0;
-			get_sql_params(L, -1, n, paramTypes, paramValues,
-			    paramLengths, paramFormats, &c, &ns);
-			n += c;
-			s += ns;
-			lua_pop(L, 1);
-		}
-		lua_pop(L, 1);
 		break;
 	default:
-		luaL_argerror(L, t, "unsupported type");
+		luaL_error(L, "unsupported PostgreSQL parameter type %s ("
+		    "use table.unpack() for table types)", luaL_typename(L, t));
 		/* NOTREACHED */
 	}
-	*count = n;
-	if (selem)
-		*selem = s;
 }
 
 static int
@@ -576,50 +551,38 @@ conn_execParams(lua_State *L)
 	Oid *paramTypes;
 	char **paramValues;
 	const char *command;
-	int n, nParams, sqlParams, *paramLengths, *paramFormats, count, selem;
+	int n, nParams, *paramLengths, *paramFormats;
 
 	conn = pgsql_conn(L, 1);
 	command = luaL_checkstring(L, 2);
 
 	nParams = lua_gettop(L) - 2;	/* subtract connection and command */
-	if (nParams < 0)
-		nParams = 0;
 
-	for (n = 0, sqlParams = 0; n < nParams; n++) {
-		get_sql_params(L, 3 + n, sqlParams, NULL, NULL, NULL, NULL,
-		    &count, &selem);
-		sqlParams += count;
-	}
+	if (nParams > 65535)
+		luaL_error(L, "number of parameters must not exceed 65535");
 
-	if (sqlParams < 0 || sqlParams > 65535)
-		luaL_error(L,
-		    "number of parameters must be between 0 and 65535");
+	if (nParams) {
+		luaL_checkstack(L, 4 + nParams, "out of stack space");
 
-	if (sqlParams) {
-		luaL_checkstack(L, 4 + selem, "out of stack space");
+		paramTypes = lua_newuserdata(L, nParams * sizeof(Oid));
+		paramValues = lua_newuserdata(L, nParams * sizeof(char *));
+		paramLengths = lua_newuserdata(L, nParams * sizeof(int));
+		paramFormats = lua_newuserdata(L, nParams * sizeof(int));
 
-		paramTypes = lua_newuserdata(L, sqlParams * sizeof(Oid));
-		paramValues = lua_newuserdata(L, sqlParams * sizeof(char *));
-		paramLengths = lua_newuserdata(L, sqlParams * sizeof(int));
-		paramFormats = lua_newuserdata(L, sqlParams * sizeof(int));
-
-		for (n = 0, sqlParams = 0; n < nParams; n++) {
-			get_sql_params(L, 3 + n, sqlParams, paramTypes,
-			    paramValues, paramLengths, paramFormats, &count,
-			    NULL);
-			sqlParams += count;
-		}
+		for (n = 0; n < nParams; n++)
+			get_param(L, 3 + n, n, paramTypes, paramValues,
+			    paramLengths, paramFormats);
 	} else {
 		paramTypes = NULL;
 		paramValues = NULL;
 		paramLengths = NULL;
 		paramFormats = NULL;
 	}
-	luaL_checkstack(L, 1, "out of stack space");
+	luaL_checkstack(L, 2, "out of stack space");
 	res = lua_newuserdata(L, sizeof(PGresult *));
 	luaL_getmetatable(L, RES_METATABLE);
 	lua_setmetatable(L, -2);
-	*res = PQexecParams(conn, command, sqlParams, paramTypes,
+	*res = PQexecParams(conn, command, nParams, paramTypes,
 	    (const char * const*)paramValues, paramLengths, paramFormats, 0);
 
 	return 1;
@@ -632,40 +595,28 @@ conn_prepare(lua_State *L)
 	PGresult **res;
 	Oid *paramTypes;
 	const char *command, *name;
-	int n, nParams, sqlParams, count;
+	int n, nParams;
 
 	conn = pgsql_conn(L, 1);
 	command = luaL_checkstring(L, 2);
 	name = luaL_checkstring(L, 3);
 
 	nParams = lua_gettop(L) - 3;	/* subtract connection, name, command */
-	if (nParams < 0)
-		nParams = 0;
 
-	for (n = 0, sqlParams = 0; n < nParams; n++) {
-		get_sql_params(L, 4 + n, sqlParams, NULL, NULL, NULL, NULL,
-		    &count, NULL);
-		sqlParams += count;
-	}
+	if (nParams > 65535)
+		luaL_error(L, "number of parameters must not exceed 65535");
 
-	if (sqlParams < 0 || sqlParams > 65535)
-		luaL_error(L,
-		    "number of parameters must be between 0 and 65535");
+	if (nParams) {
+		paramTypes = lua_newuserdata(L, nParams * sizeof(Oid));
 
-	if (sqlParams) {
-		paramTypes = lua_newuserdata(L, sqlParams * sizeof(Oid));
-
-		for (n = 0, sqlParams = 0; n < nParams; n++) {
-			get_sql_params(L, 4 + n, sqlParams, paramTypes, NULL,
-			    NULL, NULL, &count, NULL);
-			sqlParams += count;
-		}
+		for (n = 0; n < nParams; n++)
+			get_param(L, 4 + n, n, paramTypes, NULL, NULL, NULL);
 	} else
 		paramTypes = NULL;
 
 	res = lua_newuserdata(L, sizeof(PGresult *));
 	luaL_setmetatable(L, RES_METATABLE);
-	*res = PQprepare(conn, command, name, sqlParams, paramTypes);
+	*res = PQprepare(conn, command, name, nParams, paramTypes);
 
 	return 1;
 }
@@ -677,47 +628,36 @@ conn_execPrepared(lua_State *L)
 	PGresult **res;
 	char **paramValues;
 	const char *command;
-	int n, nParams, sqlParams, *paramLengths, *paramFormats, count, selem;
+	int n, nParams, *paramLengths, *paramFormats;
 
 	conn = pgsql_conn(L, 1);
 	command = luaL_checkstring(L, 2);
 
 	nParams = lua_gettop(L) - 2;	/* subtract connection and name */
-	if (nParams < 0)
-		nParams = 0;
 
-	for (n = 0, sqlParams = 0; n < nParams; n++) {
-		get_sql_params(L, 3 + n, sqlParams, NULL, NULL,  NULL, NULL,
-		    &count, &selem);
-		sqlParams += count;
-	}
+	if (nParams > 65535)
+		luaL_error(L, "number of parameters must not exceed 65535");
 
-	if (sqlParams < 0 || sqlParams > 65535)
-		luaL_error(L,
-		    "number of parameters must be between 0 and 65535");
+	if (nParams) {
+		luaL_checkstack(L, 3 + nParams, "out of stack space");
 
-	if (sqlParams) {
-		luaL_checkstack(L, 3 + selem, "out of stack space");
+		paramValues = lua_newuserdata(L, nParams * sizeof(char *));
+		paramLengths = lua_newuserdata(L, nParams * sizeof(int));
+		paramFormats = lua_newuserdata(L, nParams * sizeof(int));
 
-		paramValues = lua_newuserdata(L, sqlParams * sizeof(char *));
-		paramLengths = lua_newuserdata(L, sqlParams * sizeof(int));
-		paramFormats = lua_newuserdata(L, sqlParams * sizeof(int));
-
-		for (n = 0, sqlParams = 0; n < nParams; n++) {
-			get_sql_params(L, 3 + n, sqlParams, NULL, paramValues,
-			    paramLengths, paramFormats, &count, NULL);
-			sqlParams += count;
-		}
+		for (n = 0; n < nParams; n++)
+			get_param(L, 3 + n, n, NULL, paramValues, paramLengths,
+			    paramFormats);
 	} else {
 		paramValues = NULL;
 		paramLengths = NULL;
 		paramFormats = NULL;
 	}
-	luaL_checkstack(L, 1, "out of stack space");
+	luaL_checkstack(L, 2, "out of stack space");
 
 	res = lua_newuserdata(L, sizeof(PGresult *));
 	luaL_setmetatable(L, RES_METATABLE);
-	*res = PQexecPrepared(conn, command, sqlParams,
+	*res = PQexecPrepared(conn, command, nParams,
 	    (const char * const*)paramValues, paramLengths, paramFormats, 0);
 
 	return 1;
@@ -851,34 +791,24 @@ conn_sendQueryParams(lua_State *L)
 	Oid *paramTypes;
 	char **paramValues;
 	const char *command;
-	int n, nParams, sqlParams, *paramLengths, *paramFormats, count, selem;
+	int n, nParams, sqlParams, *paramLengths, *paramFormats;
 
 	conn = pgsql_conn(L, 1);
 	command = luaL_checkstring(L, 2);
 
 	nParams = lua_gettop(L) - 2;	/* subtract connection and command */
-	if (nParams < 0)
-		nParams = 0;
 
-	for (n = 0, sqlParams = 0; n < nParams; n++) {
-		get_sql_params(L, 3 + n, 0, NULL, NULL, NULL, NULL, &count,
-		    &selem);
-		sqlParams += count;
-	}
-	if (sqlParams) {
-		luaL_checkstack(L, 4 + selem, "out of stack space");
+	if (nParams) {
+		luaL_checkstack(L, 4 + nParams, "out of stack space");
 
-		paramTypes = lua_newuserdata(L, sqlParams * sizeof(Oid));
-		paramValues = lua_newuserdata(L, sqlParams * sizeof(char *));
-		paramLengths = lua_newuserdata(L, sqlParams * sizeof(int));
-		paramFormats = lua_newuserdata(L, sqlParams * sizeof(int));
+		paramTypes = lua_newuserdata(L, nParams * sizeof(Oid));
+		paramValues = lua_newuserdata(L, nParams * sizeof(char *));
+		paramLengths = lua_newuserdata(L, nParams * sizeof(int));
+		paramFormats = lua_newuserdata(L, nParams * sizeof(int));
 
-		for (n = 0, sqlParams = 0; n < nParams; n++) {
-			get_sql_params(L, 3 + n, sqlParams, paramTypes,
-			    paramValues, paramLengths, paramFormats, &count,
-			    NULL);
-			sqlParams += count;
-		}
+		for (n = 0; n < nParams; n++)
+			get_param(L, 3 + n, n, paramTypes, paramValues,
+			   paramLengths, paramFormats);
 	} else {
 		paramTypes = NULL;
 		paramValues = NULL;
@@ -886,7 +816,7 @@ conn_sendQueryParams(lua_State *L)
 		paramFormats = NULL;
 	}
 	lua_pushboolean(L,
-	    PQsendQueryParams(conn, command, sqlParams, paramTypes,
+	    PQsendQueryParams(conn, command, nParams, paramTypes,
 	    (const char * const*)paramValues, paramLengths, paramFormats, 0));
 	return 1;
 }
@@ -897,33 +827,23 @@ conn_sendPrepare(lua_State *L)
 	PGconn *conn;
 	Oid *paramTypes;
 	const char *command, *name;
-	int n, nParams, sqlParams, count;
+	int n, nParams;
 
 	conn = pgsql_conn(L, 1);
 	command = luaL_checkstring(L, 2);
 	name = luaL_checkstring(L, 3);
 
 	nParams = lua_gettop(L) - 3;	/* subtract connection, name, command */
-	if (nParams < 0)
-		nParams = 0;
 
-	for (n = 0, sqlParams = 0; n < nParams; n++) {
-		get_sql_params(L, 4 + n, 0, NULL, NULL, NULL, NULL, &count,
-		    NULL);
-		sqlParams += count;
-	}
-	if (sqlParams) {
-		paramTypes = lua_newuserdata(L, sqlParams * sizeof(Oid));
+	if (nParams) {
+		paramTypes = lua_newuserdata(L, nParams * sizeof(Oid));
 
-		for (n = 0, sqlParams = 0; n < nParams; n++) {
-			get_sql_params(L, 4 + n, sqlParams, paramTypes, NULL,
-			    NULL, NULL, &count, NULL);
-			sqlParams += count;
-		}
+		for (n = 0; n < nParams; n++)
+			get_param(L, 4 + n, n, paramTypes, NULL, NULL, NULL);
 	} else
 		paramTypes = NULL;
 	lua_pushboolean(L,
-	    PQsendPrepare(conn, command, name, sqlParams, paramTypes));
+	    PQsendPrepare(conn, command, name, nParams, paramTypes));
 	return 1;
 }
 
@@ -933,32 +853,23 @@ conn_sendQueryPrepared(lua_State *L)
 	PGconn *conn;
 	char **paramValues;
 	const char *name;
-	int n, nParams, sqlParams, *paramLengths, *paramFormats, count, selem;
+	int n, nParams, *paramLengths, *paramFormats;
 
 	conn = pgsql_conn(L, 1);
 	name = luaL_checkstring(L, 2);
 
 	nParams = lua_gettop(L) - 2;	/* subtract connection and name */
-	if (nParams < 0)
-		nParams = 0;
 
-	for (n = 0, sqlParams = 0; n < nParams; n++) {
-		get_sql_params(L, 3 + n, 0, NULL, NULL, NULL, NULL, &count,
-		    &selem);
-		sqlParams += count;
-	}
-	if (sqlParams) {
-		luaL_checkstack(L, 3 + selem, "out of stack space");
+	if (nParams) {
+		luaL_checkstack(L, 3 + nParams, "out of stack space");
 
-		paramValues = lua_newuserdata(L, sqlParams * sizeof(char *));
-		paramLengths = lua_newuserdata(L, sqlParams * sizeof(int));
-		paramFormats = lua_newuserdata(L, sqlParams * sizeof(int));
+		paramValues = lua_newuserdata(L, nParams * sizeof(char *));
+		paramLengths = lua_newuserdata(L, nParams * sizeof(int));
+		paramFormats = lua_newuserdata(L, nParams * sizeof(int));
 
-		for (n = 0, sqlParams = 0; n < nParams; n++) {
-			get_sql_params(L, 3 + n, sqlParams, NULL, paramValues,
-			   paramLengths, paramFormats, &count, NULL);
-			sqlParams += count;
-		}
+		for (n = 0; n < nParams; n++)
+			get_param(L, 3 + n, n, NULL, paramValues, paramLengths,
+			    paramFormats);
 	} else {
 		paramValues = NULL;
 		paramLengths = NULL;
