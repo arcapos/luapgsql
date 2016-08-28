@@ -1000,12 +1000,11 @@ conn_putCopyData(lua_State *L)
 static int
 conn_putCopyEnd(lua_State *L)
 {
+	PGconn *conn;
 	int r;
 
-	if (lua_gettop(L) > 1)
-		r = PQputCopyEnd(pgsql_conn(L, 1), luaL_checkstring(L, 2));
-	else
-		r = PQputCopyEnd(pgsql_conn(L, 1), NULL);
+	conn = pgsql_conn(L, 1);
+	r = PQputCopyEnd(conn, luaL_optstring(L, 2, NULL));
 
 	if (r != -1)
 		lua_pushboolean(L, r);
