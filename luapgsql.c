@@ -1002,7 +1002,10 @@ conn_putCopyEnd(lua_State *L)
 {
 	int r;
 
-	r = PQputCopyEnd(pgsql_conn(L, 1), NULL);
+	if (lua_gettop(L) > 1)
+		r = PQputCopyEnd(pgsql_conn(L, 1), luaL_checkstring(L, 2));
+	else
+		r = PQputCopyEnd(pgsql_conn(L, 1), NULL);
 
 	if (r != -1)
 		lua_pushboolean(L, r);
