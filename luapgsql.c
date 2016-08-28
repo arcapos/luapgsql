@@ -804,7 +804,7 @@ conn_sendQueryParams(lua_State *L)
 	Oid *paramTypes;
 	char **paramValues;
 	const char *command;
-	int n, nParams, sqlParams, *paramLengths, *paramFormats;
+	int n, nParams, *paramLengths, *paramFormats;
 
 	conn = pgsql_conn(L, 1);
 	command = luaL_checkstring(L, 2);
