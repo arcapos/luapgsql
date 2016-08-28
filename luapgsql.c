@@ -461,8 +461,10 @@ conn_exec(lua_State *L)
 
 	res = lua_newuserdata(L, sizeof(PGresult *));
 	*res = PQexec(conn, command);
-	luaL_getmetatable(L, RES_METATABLE);
-	lua_setmetatable(L, -2);
+	if (*res == NULL)
+		lua_pushnil(L);
+	else
+		luaL_setmetatable(L, RES_METATABLE);
 	return 1;
 }
 
@@ -580,11 +582,12 @@ conn_execParams(lua_State *L)
 	}
 	luaL_checkstack(L, 2, "out of stack space");
 	res = lua_newuserdata(L, sizeof(PGresult *));
-	luaL_getmetatable(L, RES_METATABLE);
-	lua_setmetatable(L, -2);
 	*res = PQexecParams(conn, command, nParams, paramTypes,
 	    (const char * const*)paramValues, paramLengths, paramFormats, 0);
-
+	if (*res == NULL)
+		lua_pushnil(L);
+	else
+		luaL_setmetatable(L, RES_METATABLE);
 	return 1;
 }
 
@@ -615,9 +618,11 @@ conn_prepare(lua_State *L)
 		paramTypes = NULL;
 
 	res = lua_newuserdata(L, sizeof(PGresult *));
-	luaL_setmetatable(L, RES_METATABLE);
 	*res = PQprepare(conn, command, name, nParams, paramTypes);
-
+	if (*res == NULL)
+		lua_pushnil(L);
+	else
+		luaL_setmetatable(L, RES_METATABLE);
 	return 1;
 }
 
@@ -656,10 +661,12 @@ conn_execPrepared(lua_State *L)
 	luaL_checkstack(L, 2, "out of stack space");
 
 	res = lua_newuserdata(L, sizeof(PGresult *));
-	luaL_setmetatable(L, RES_METATABLE);
 	*res = PQexecPrepared(conn, command, nParams,
 	    (const char * const*)paramValues, paramLengths, paramFormats, 0);
-
+	if (*res == NULL)
+		lua_pushnil(L);
+	else
+		luaL_setmetatable(L, RES_METATABLE);
 	return 1;
 }
 
@@ -674,8 +681,11 @@ conn_describePrepared(lua_State *L)
 	name = luaL_checkstring(L, 2);
 
 	res = lua_newuserdata(L, sizeof(PGresult *));
-	luaL_setmetatable(L, RES_METATABLE);
 	*res = PQdescribePrepared(conn, name);
+	if (*res == NULL)
+		lua_pushnil(L);
+	else
+		luaL_setmetatable(L, RES_METATABLE);
 	return 1;
 }
 
@@ -690,8 +700,11 @@ conn_describePortal(lua_State *L)
 	name = luaL_checkstring(L, 2);
 
 	res = lua_newuserdata(L, sizeof(PGresult *));
-	luaL_setmetatable(L, RES_METATABLE);
 	*res = PQdescribePortal(conn, name);
+	if (*res == NULL)
+		lua_pushnil(L);
+	else
+		luaL_setmetatable(L, RES_METATABLE);
 	return 1;
 }
 
@@ -908,8 +921,7 @@ conn_getResult(lua_State *L)
 	else {
 		res = lua_newuserdata(L, sizeof(PGresult *));
 		*res = r;
-		luaL_getmetatable(L, RES_METATABLE);
-		lua_setmetatable(L, -2);
+		luaL_setmetatable(L, RES_METATABLE);
 	}
 	return 1;
 }
@@ -960,8 +972,7 @@ conn_notifies(lua_State *L)
 	else {
 		notify = lua_newuserdata(L, sizeof(PGnotify *));
 		*notify = n;
-		luaL_getmetatable(L, NOTIFY_METATABLE);
-		lua_setmetatable(L, -2);
+		luaL_setmetatable(L, NOTIFY_METATABLE);
 	}
 	return 1;
 }
@@ -1228,8 +1239,7 @@ noticeReceiver(void *arg, const PGresult *r)
 
 	res = lua_newuserdata(L, sizeof(PGresult *));
 	*res = (PGresult *)r;
-	luaL_getmetatable(L, RES_METATABLE);
-	lua_setmetatable(L, -2);
+	luaL_setmetatable(L, RES_METATABLE);
 
 	if (lua_pcall(L, 1, 0, 0))
 		luaL_error(L, "%s", lua_tostring(L, -1));
@@ -1730,8 +1740,7 @@ res_index(lua_State *L)
 			t = lua_newuserdata(L, sizeof(tuple));
 			t->res = res;
 			t->row = row;
-			luaL_getmetatable(L, TUPLE_METATABLE);
-			lua_setmetatable(L, -2);
+			luaL_setmetatable(L, TUPLE_METATABLE);
 		}
 	} else {
 		const char *nam;
@@ -2064,7 +2073,7 @@ pgsql_set_info(lua_State *L)
 	lua_pushliteral(L, "PostgreSQL binding for Lua");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "pgsql 1.6.0");
+	lua_pushliteral(L, "pgsql 1.6.1");
 	lua_settable(L, -3);
 }
 
