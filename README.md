@@ -6,4 +6,4 @@ You can reach the author at marc@msys.ch
 Makefile is for BSD systems
 GNUmakefile is for Linux systems
 
-See luapgsql.md for full documentation.
+See luapgsql.adoc for full documentation.
