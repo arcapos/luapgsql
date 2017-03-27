@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009 - 2016, Micro Systems Marc Balmer, CH-5073 Gipf-Oberfrick
+ * Copyright (c) 2009 - 2017, Micro Systems Marc Balmer, CH-5073 Gipf-Oberfrick
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -1646,14 +1646,42 @@ static int
 res_copy(lua_State *L)
 {
 	PGresult *res = *(PGresult **)luaL_checkudata(L, 1, RES_METATABLE);
-	int row, col;
+	int row, col, convert;
+
+	convert = 0;	/* Do not convert numeric types */
+
+	if (lua_gettop(L) == 2)
+		convert = lua_toboolean(L, 2);
 
 	lua_newtable(L);
 	for (row = 0; row < PQntuples(res); row++) {
 		lua_pushinteger(L, row + 1);
 		lua_newtable(L);
 		for (col = 0; col < PQnfields(res); col++) {
-			lua_pushstring(L, PQgetvalue(res, row, col));
+			if (convert)
+				switch (PQftype(res, col)) {
+				case BOOLOID:
+					lua_pushboolean(L,
+					    atoi(PQgetvalue(res, row, col)));
+					break;
+				case INT2OID:
+				case INT4OID:
+				case INT8OID:
+					lua_pushinteger(L,
+					    atol(PQgetvalue(res, row, col)));
+					break;
+				case FLOAT4OID:
+				case FLOAT8OID:
+				case NUMERICOID:
+					lua_pushnumber(L,
+					    atof(PQgetvalue(res, row, col)));
+					break;
+				default:
+					lua_pushstring(L,
+					    PQgetvalue(res, row, col));
+				}
+			else
+				lua_pushstring(L, PQgetvalue(res, row, col));
 			lua_setfield(L, -2, PQfname(res, col));
 		}
 		lua_settable(L, -3);
@@ -2068,14 +2096,14 @@ static void
 pgsql_set_info(lua_State *L)
 {
 	lua_pushliteral(L, "_COPYRIGHT");
-	lua_pushliteral(L, "Copyright (C) 2009 - 2016 by "
+	lua_pushliteral(L, "Copyright (C) 2009 - 2017 by "
 	    "micro systems marc balmer");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_DESCRIPTION");
 	lua_pushliteral(L, "PostgreSQL binding for Lua");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "pgsql 1.6.1");
+	lua_pushliteral(L, "pgsql 1.6.2");
 	lua_settable(L, -3);
 }
 

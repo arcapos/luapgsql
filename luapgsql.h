@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009 - 2016, Micro Systems Marc Balmer, CH-5073 Gipf-Oberfrick
+ * Copyright (c) 2009 - 2017, Micro Systems Marc Balmer, CH-5073 Gipf-Oberfrick
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -40,8 +40,12 @@
 /* OIDs from server/pg_type.h */
 #define BOOLOID			16
 #define INT8OID			20
+#define INT2OID			21
+#define INT4OID			23
 #define TEXTOID			25
+#define FLOAT4OID		700
 #define FLOAT8OID		701
+#define NUMERICOID		1700
 
 typedef struct tuple {
 	PGresult	*res;
