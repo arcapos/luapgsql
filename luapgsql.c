@@ -1764,7 +1764,7 @@ res_index(lua_State *L)
 		res = *(PGresult **)luaL_checkudata(L, 1, RES_METATABLE);
 		row = luaL_checkinteger(L, 2) - 1;
 
-		if (row < 0 || row > PQntuples(res))
+		if (row < 0 || row >= PQntuples(res))
 			lua_pushnil(L);
 		else {
 			t = lua_newuserdata(L, sizeof(tuple));
@@ -2089,6 +2089,9 @@ static struct constant pgsql_constant[] = {
 	{ "SEEK_END",			SEEK_END },
 	{ "SEEK_SET",			SEEK_SET },
 
+	/* Miscellaneous values */
+	{ "InvalidOid",			InvalidOid },
+
 	{ NULL,				0 }
 };
 
@@ -2103,7 +2106,7 @@ pgsql_set_info(lua_State *L)
 	lua_pushliteral(L, "PostgreSQL binding for Lua");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "pgsql 1.6.2");
+	lua_pushliteral(L, "pgsql 1.6.3");
 	lua_settable(L, -3);
 }
 
