@@ -57,4 +57,9 @@ typedef struct field {
 	int		 col;
 } field;
 
+typedef struct notice {
+	lua_State	*L;
+	int		 f;
+} notice;
+
 #endif /* __LUAPGSQL_H__ */

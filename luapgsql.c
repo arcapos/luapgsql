@@ -1233,50 +1233,76 @@ conn_flush(lua_State *L)
 static void
 noticeReceiver(void *arg, const PGresult *r)
 {
-	lua_State *L = (lua_State *)arg;
+	notice *n = arg;
 	PGresult **res;
 
-	lua_pushstring(L, "__pgsqlNoticeReceiver");
-	lua_rawget(L, LUA_REGISTRYINDEX);
+	lua_rawgeti(n->L, LUA_REGISTRYINDEX, n->f);
+	res = lua_newuserdata(n->L, sizeof(PGresult *));
 
-	res = lua_newuserdata(L, sizeof(PGresult *));
 	*res = (PGresult *)r;
-	luaL_setmetatable(L, RES_METATABLE);
+	luaL_setmetatable(n->L, RES_METATABLE);
 
-	if (lua_pcall(L, 1, 0, 0))
-		luaL_error(L, "%s", lua_tostring(L, -1));
+	if (lua_pcall(n->L, 1, 0, 0))
+		luaL_error(n->L, "%s", lua_tostring(n->L, -1));
 	*res = NULL;	/* avoid double free */
 }
 
 static void
 noticeProcessor(void *arg, const char *message)
 {
-	lua_State *L = (lua_State *)arg;
+	notice *n = arg;
 
-	lua_pushstring(L, "__pgsqlNoticeProcessor");
-	lua_rawget(L, LUA_REGISTRYINDEX);
-	lua_pushstring(L, message);
-	if (lua_pcall(L, 1, 0, 0))
-		luaL_error(L, "%s", lua_tostring(L, -1));
+	lua_rawgeti(n->L, LUA_REGISTRYINDEX, n->f);
+	lua_pushstring(n->L, message);
+	if (lua_pcall(n->L, 1, 0, 0))
+		luaL_error(n->L, "%s", lua_tostring(n->L, -1));
 }
 
 static int
 conn_setNoticeReceiver(lua_State *L)
 {
-	lua_pushstring(L, "__pgsqlNoticeReceiver");
-	lua_pushvalue(L, -2);
-	lua_rawset(L, LUA_REGISTRYINDEX);
-	PQsetNoticeReceiver(pgsql_conn(L, 1), noticeReceiver, L);
+	notice **n;
+	PGconn *conn;
+	int f;
+
+	if (!lua_isfunction(L, -1))
+		return luaL_argerror(L, -1, "function expected");
+
+	f = luaL_ref(L, LUA_REGISTRYINDEX);
+	conn = pgsql_conn(L, 1);
+
+	n = gcmalloc(L, sizeof(notice *));
+	*n = malloc(sizeof(notice));
+	if (*n != NULL) {
+		(*n)->L = L;
+		(*n)->f = f;
+		PQsetNoticeReceiver(conn, noticeReceiver, *n);
+	} else
+		return luaL_error(L, "out of memory");
 	return 0;
 }
 
 static int
 conn_setNoticeProcessor(lua_State *L)
 {
-	lua_pushstring(L, "__pgsqlNoticeProcessor");
-	lua_pushvalue(L, -2);
-	lua_rawset(L, LUA_REGISTRYINDEX);
-	PQsetNoticeProcessor(pgsql_conn(L, 1), noticeProcessor, L);
+	notice **n;
+	PGconn *conn;
+	int f;
+
+	if (!lua_isfunction(L, -1))
+		return luaL_argerror(L, -1, "function expected");
+
+	f = luaL_ref(L, LUA_REGISTRYINDEX);
+	conn = pgsql_conn(L, 1);
+
+	n = gcmalloc(L, sizeof(notice *));
+	*n = malloc(sizeof(notice));
+	if (*n != NULL) {
+		(*n)->L = L;
+		(*n)->f = f;
+		PQsetNoticeProcessor(conn, noticeProcessor, *n);
+	} else
+		return luaL_error(L, "out of memory");
 	return 0;
 }
 
