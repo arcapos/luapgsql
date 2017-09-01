@@ -59,6 +59,11 @@ luaL_setmetatable(lua_State *L, const char *tname)
 }
 #endif
 
+#if LUA_VERSION_NUM < 503
+#define lua_getfield(L, i, k) \
+	(lua_getfield((L), (i), (k)), lua_type((L), -1))
+#endif
+
 /*
  * Garbage collected memory
  */
@@ -1267,17 +1272,28 @@ static int
 conn_setNoticeReceiver(lua_State *L)
 {
 	PGconn *conn;
+	lua_State *L1;
 
 	conn = pgsql_conn(L, 1);
 	luaL_checktype(L, 2, LUA_TFUNCTION);
 
 	lua_getuservalue(L, 1);
-	lua_State *L1 = lua_newthread(L);
-	lua_pushcfunction(L, noticeReceiverHelper);
-	lua_pushvalue(L, 2);
-	lua_pushvalue(L, 1);
-	lua_xmove(L, L1, 3); /* Move helper function, user function and connection */
-	lua_setfield(L, -2, "noticeReceiverThread");
+	if (LUA_TNIL == lua_getfield(L, -1, "noticeReceiverThread")) {
+		lua_pop(L, 1);
+		/* create new thread for callbacks */
+		L1 = lua_newthread(L);
+		lua_pushcfunction(L, noticeReceiverHelper);
+		lua_pushvalue(L, 2);
+		lua_pushvalue(L, 1);
+		lua_xmove(L, L1, 3); /* Move helper function, user function and connection */
+		lua_setfield(L, -2, "noticeReceiverThread");
+	} else {
+		/* reuse old thread */
+		L1 = lua_tothread(L, -1);
+		lua_pushvalue(L, 2);
+		lua_xmove(L, L1, 1); /* Move new user function */
+		lua_replace(L1, 2);
+	}
 
 	PQsetNoticeReceiver(conn, noticeReceiver, L1);
 
@@ -1315,17 +1331,28 @@ static int
 conn_setNoticeProcessor(lua_State *L)
 {
 	PGconn *conn;
+	lua_State *L1;
 
 	conn = pgsql_conn(L, 1);
 	luaL_checktype(L, 2, LUA_TFUNCTION);
 
 	lua_getuservalue(L, 1);
-	lua_State *L1 = lua_newthread(L);
-	lua_pushcfunction(L, noticeProcessorHelper);
-	lua_pushvalue(L, 2);
-	lua_pushvalue(L, 1);
-	lua_xmove(L, L1, 3); /* Move helper function, user function and connection */
-	lua_setfield(L, -2, "noticeProcessorThread");
+	if (LUA_TNIL == lua_getfield(L, -1, "noticeProcessorThread")) {
+		lua_pop(L, 1);
+		/* create new thread for callbacks */
+		L1 = lua_newthread(L);
+		lua_pushcfunction(L, noticeProcessorHelper);
+		lua_pushvalue(L, 2);
+		lua_pushvalue(L, 1);
+		lua_xmove(L, L1, 3); /* Move helper function, user function and connection */
+		lua_setfield(L, -2, "noticeProcessorThread");
+	} else {
+		/* reuse old thread */
+		L1 = lua_tothread(L, -1);
+		lua_pushvalue(L, 2);
+		lua_xmove(L, L1, 1); /* Move new user function */
+		lua_replace(L1, 2);
+	}
 
 	PQsetNoticeProcessor(conn, noticeProcessor, L1);
 
