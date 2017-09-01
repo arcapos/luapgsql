@@ -1265,11 +1265,11 @@ conn_setNoticeReceiver(lua_State *L)
 	PGconn *conn;
 	int f;
 
-	if (!lua_isfunction(L, -1))
-		return luaL_argerror(L, -1, "function expected");
+	conn = pgsql_conn(L, 1);
+	luaL_checktype(L, 2, LUA_TFUNCTION);
+	lua_settop(L, 2);
 
 	f = luaL_ref(L, LUA_REGISTRYINDEX);
-	conn = pgsql_conn(L, 1);
 
 	n = gcmalloc(L, sizeof(notice *));
 	*n = malloc(sizeof(notice));
@@ -1289,11 +1289,11 @@ conn_setNoticeProcessor(lua_State *L)
 	PGconn *conn;
 	int f;
 
-	if (!lua_isfunction(L, -1))
-		return luaL_argerror(L, -1, "function expected");
+	conn = pgsql_conn(L, 1);
+	luaL_checktype(L, 2, LUA_TFUNCTION);
+	lua_settop(L, 2);
 
 	f = luaL_ref(L, LUA_REGISTRYINDEX);
-	conn = pgsql_conn(L, 1);
 
 	n = gcmalloc(L, sizeof(notice *));
 	*n = malloc(sizeof(notice));
