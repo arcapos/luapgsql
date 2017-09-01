@@ -30,11 +30,11 @@
 #ifndef __LUAPGSQL_H__
 #define __LUAPGSQL_H__
 
-#define CONN_METATABLE		"pgsql connection methods"
-#define RES_METATABLE		"pgsql result methods"
-#define TUPLE_METATABLE		"pgsql tuple methods"
-#define FIELD_METATABLE		"pgsql tuple field methods"
-#define NOTIFY_METATABLE	"pgsql asychronous notification methods"
+#define CONN_METATABLE		"pgsql connection"
+#define RES_METATABLE		"pgsql result"
+#define TUPLE_METATABLE		"pgsql tuple"
+#define FIELD_METATABLE		"pgsql tuple field"
+#define NOTIFY_METATABLE	"pgsql asychronous notification"
 #define GCMEM_METATABLE		"pgsql garbage collected memory"
 
 /* OIDs from server/pg_type.h */
