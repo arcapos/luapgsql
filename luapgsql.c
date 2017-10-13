@@ -32,7 +32,11 @@
 #define htobe64(x) OSSwapHostToBigInt64(x)
 #elif __linux__
 #include <endian.h>
+#elif _WIN32
+#include <x86intrin.h>
+#define htobe64(x) _bswap64(x)
 #endif
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
