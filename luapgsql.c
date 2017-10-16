@@ -33,8 +33,13 @@
 #elif __linux__
 #include <endian.h>
 #elif _WIN32
+#include <sys/param.h>
+#if BYTE_ORDER == LITTLE_ENDIAN
 #include <x86intrin.h>
-#define htobe64(x) _bswap64(x)
+#define htobe64(x) __builtin_bswap64(x)
+#else
+#define htobe64(x) (x)
+#endif
 #endif
 
 #include <stdlib.h>
