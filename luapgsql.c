@@ -33,8 +33,8 @@
 #elif __linux__
 #include <endian.h>
 #elif _WIN32
-#include <sys/param.h>
-#if BYTE_ORDER == LITTLE_ENDIAN
+#include <windows.h>
+#if REG_DWORD == REG_DWORD_LITTLE_ENDIAN
 #define htobe64(x) __builtin_bswap64(x)
 #else
 #define htobe64(x) (x)
