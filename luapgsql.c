@@ -28,17 +28,21 @@
 /* PostgreSQL extension module (using Lua) */
 
 #ifdef __APPLE__
-#include <libkern/OSByteOrder.h>
-#define htobe64(x) OSSwapHostToBigInt64(x)
+	#include <libkern/OSByteOrder.h>
+	#define htobe64(x) OSSwapHostToBigInt64(x)
 #elif __linux__
-#include <endian.h>
+	#include <endian.h>
 #elif _WIN32
-#include <windows.h>
-#if REG_DWORD == REG_DWORD_LITTLE_ENDIAN
-#define htobe64(x) __builtin_bswap64(x)
-#else
-#define htobe64(x) (x)
-#endif
+	#include <windows.h>
+	#if REG_DWORD == REG_DWORD_LITTLE_ENDIAN
+		#ifdef __GNUC__
+			#define htobe64(x) __builtin_bswap64(x)
+		#elif _MSC_VER
+			#define htobe64(x) _byteswap_uint64(x)
+		#endif
+	#else
+		#define htobe64(x) (x)
+	#endif
 #endif
 
 #include <stdlib.h>
@@ -183,7 +187,7 @@ pgsql_ping(lua_State *L)
 static int
 pgsql_encryptPassword(lua_State *L)
 {
-	char const **pw;
+	char **pw;
 	const char *passwd, *user;
 
 	passwd = luaL_checkstring(L, 1);
