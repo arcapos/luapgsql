@@ -780,10 +780,12 @@ conn_escapeBytea(lua_State *L)
 	s = (const unsigned char *)luaL_checklstring(L, 2, &from_length);
 	p = gcmalloc(L, sizeof(char *));
 	*p = PQescapeByteaConn(d, s, from_length, &to_length);
-	lua_pushstring(L, (const char *)*p);
-	lua_pushinteger(L, to_length);
-	gcfree(p);
-	return 2;
+	if (*p) {
+		lua_pushlstring(L, (const char *)*p, to_length - 1);
+		gcfree(p);
+	} else
+		lua_pushnil(L);
+	return 1;
 }
 
 /*
@@ -2135,7 +2137,7 @@ pgsql_set_info(lua_State *L)
 	lua_pushliteral(L, "PostgreSQL binding for Lua");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "pgsql 1.6.4");
+	lua_pushliteral(L, "pgsql 1.6.5");
 	lua_settable(L, -3);
 }
 
