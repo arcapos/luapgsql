@@ -1231,6 +1231,28 @@ conn_flush(lua_State *L)
 	return 1;
 }
 
+#if PG_VERSION_NUM >= 100000
+static int
+conn_encryptPassword(lua_State *L)
+{
+	const char *algorithm = NULL;
+	char **pw;
+
+	if (lua_isstring(L, 4))
+		algorithm = lua_tostring(L, 4);
+
+	pw = gcmalloc(L, sizeof(char *));
+	*pw = PQencryptPasswordConn(pgsql_conn(L, 1), luaL_checkstring(L, 2),
+	    luaL_checkstring(L, 3), algorithm);
+	if (*pw) {
+		lua_pushstring(L, *pw);
+		gcfree(pw);
+	} else
+		lua_pushnil(L);
+	return 1;
+}
+#endif
+
 /* Notice processing */
 static void
 noticeReceiver(void *arg, const PGresult *r)
@@ -2137,7 +2159,7 @@ pgsql_set_info(lua_State *L)
 	lua_pushliteral(L, "PostgreSQL binding for Lua");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "pgsql 1.6.5");
+	lua_pushliteral(L, "pgsql 1.6.6");
 	lua_settable(L, -3);
 }
 
@@ -2241,7 +2263,9 @@ luaopen_pgsql(lua_State *L)
 		{ "setnonblocking", conn_setnonblocking },
 		{ "isnonblocking", conn_isnonblocking },
 		{ "flush", conn_flush },
-
+#if PG_VERSION_NUM >= 100000
+		{ "encryptPassword", conn_encryptPassword },
+#endif
 		/* Notice processing */
 		{ "setNoticeReceiver", conn_setNoticeReceiver },
 		{ "setNoticeProcessor", conn_setNoticeProcessor },
