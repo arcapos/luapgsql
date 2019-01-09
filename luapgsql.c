@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009 - 2017, Micro Systems Marc Balmer, CH-5073 Gipf-Oberfrick
+ * Copyright (c) 2009 - 2019, Micro Systems Marc Balmer, CH-5073 Gipf-Oberfrick
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -1712,7 +1712,8 @@ res_copy(lua_State *L)
 				switch (PQftype(res, col)) {
 				case BOOLOID:
 					lua_pushboolean(L,
-					    atoi(PQgetvalue(res, row, col)));
+					    strcmp(PQgetvalue(res, row, col),
+					    "f"));
 					break;
 				case INT2OID:
 				case INT4OID:
@@ -2152,14 +2153,14 @@ static void
 pgsql_set_info(lua_State *L)
 {
 	lua_pushliteral(L, "_COPYRIGHT");
-	lua_pushliteral(L, "Copyright (C) 2009 - 2017 by "
+	lua_pushliteral(L, "Copyright (C) 2009 - 2019 by "
 	    "micro systems marc balmer");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_DESCRIPTION");
 	lua_pushliteral(L, "PostgreSQL binding for Lua");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "pgsql 1.6.6");
+	lua_pushliteral(L, "pgsql 1.6.7");
 	lua_settable(L, -3);
 }
 
