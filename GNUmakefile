@@ -1,5 +1,6 @@
-SRCS=		luapgsql.c
 LIB=		pgsql
+
+SRCS=		luapgsql.c
 
 LUA_VERSION?=	$(shell lua -v 2>&1 | cut -c 5-7)
 
