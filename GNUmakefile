@@ -1,17 +1,17 @@
 SRCS=		luapgsql.c
 LIB=		pgsql
 
-LUAVER=		$(shell lua -v 2>&1 | cut -c 5-7)
+LUA_VERSION?=	$(shell lua -v 2>&1 | cut -c 5-7)
 
-CFLAGS+=	-O3 -Wall -fPIC -I/usr/include -I/usr/include/lua${LUAVER} \
+CFLAGS+=	-O3 -Wall -fPIC -I/usr/include -I/usr/include/lua${LUA_VERSION} \
 		-I/usr/include/postgresql
 
 LDADD+=		-L/usr/lib -lpq
 
 LIBDIR=		/usr/lib
-LUADIR=		/usr/lib/lua/${LUAVER}
+LUADIR=		/usr/lib/lua/${LUA_VERSION}
 
-${LIB}.so:	${SRCS:.c=.o} luapgsql.h
+${LIB}.so:	${SRCS:.c=.o}
 		cc -shared -o ${LIB}.so ${CFLAGS} ${SRCS:.c=.o} ${LDADD}
 
 clean:
