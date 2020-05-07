@@ -8,6 +8,11 @@ else
 	print(conn:errorMessage())
 end
 
+local res = conn:execParams([[
+select * from pg_roles where rolname = $1
+]], 'postgres')
+print(#res, 'roles with name postgres')
+
 local res = conn:exec([[
 select rolname, rolsuper from pg_roles order by rolname limit 2
 ]])
