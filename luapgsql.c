@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009 - 2019, Micro Systems Marc Balmer, CH-5073 Gipf-Oberfrick
+ * Copyright (c) 2009 - 2020, Micro Systems Marc Balmer, CH-5073 Gipf-Oberfrick
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -2155,14 +2155,14 @@ static void
 pgsql_set_info(lua_State *L)
 {
 	lua_pushliteral(L, "_COPYRIGHT");
-	lua_pushliteral(L, "Copyright (C) 2009 - 2019 by "
+	lua_pushliteral(L, "Copyright (C) 2009 - 2020 by "
 	    "micro systems marc balmer");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_DESCRIPTION");
 	lua_pushliteral(L, "PostgreSQL binding for Lua");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "pgsql 1.6.7");
+	lua_pushliteral(L, "pgsql 1.6.8");
 	lua_settable(L, -3);
 }
 
@@ -2291,7 +2291,6 @@ luaopen_pgsql(lua_State *L)
 		{ "lo_tell64", conn_lo_tell64 },
 		{ "lo_truncate64", conn_lo_truncate64 },
 #endif
-
 		{ NULL, NULL }
 	};
 	struct luaL_Reg res_methods[] = {
@@ -2329,6 +2328,7 @@ luaopen_pgsql(lua_State *L)
 		{ "copy", res_copy },
 		{ "fields", res_fields },
 		{ "tuples", res_tuples },
+		{ "clear", res_clear },
 		{ NULL, NULL }
 	};
 	struct luaL_Reg notify_methods[] = {
