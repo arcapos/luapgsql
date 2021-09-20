@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009 - 2020, Micro Systems Marc Balmer, CH-5073 Gipf-Oberfrick
+ * Copyright (c) 2009 - 2021, Micro Systems Marc Balmer, CH-5073 Gipf-Oberfrick
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -2155,14 +2155,14 @@ static void
 pgsql_set_info(lua_State *L)
 {
 	lua_pushliteral(L, "_COPYRIGHT");
-	lua_pushliteral(L, "Copyright (C) 2009 - 2020 by "
+	lua_pushliteral(L, "Copyright (C) 2009 - 2021 by "
 	    "micro systems marc balmer");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_DESCRIPTION");
 	lua_pushliteral(L, "PostgreSQL binding for Lua");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "pgsql 1.6.8");
+	lua_pushliteral(L, "pgsql 1.7.0");
 	lua_settable(L, -3);
 }
 
@@ -2367,6 +2367,11 @@ luaopen_pgsql(lua_State *L)
 		lua_pushcfunction(L, res_clear);
 		lua_settable(L, -3);
 
+#if LUA_VERSION_NUM >= 504
+		lua_pushliteral(L, "__close");
+		lua_pushcfunction(L, res_clear);
+		lua_settable(L, -3);
+#endif
 		lua_pushliteral(L, "__index");
 		lua_pushcfunction(L, res_index);
 		lua_settable(L, -3);
@@ -2390,6 +2395,12 @@ luaopen_pgsql(lua_State *L)
 		lua_pushliteral(L, "__gc");
 		lua_pushcfunction(L, notify_clear);
 		lua_settable(L, -3);
+
+#if LUA_VERSION_NUM >= 504
+		lua_pushliteral(L, "__close");
+		lua_pushcfunction(L, notify_clear);
+		lua_settable(L, -3);
+#endif
 
 		lua_pushliteral(L, "__index");
 		lua_pushvalue(L, -2);
