@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009 - 2021, Micro Systems Marc Balmer, CH-5073 Gipf-Oberfrick
+ * Copyright (c) 2009 - 2022, Micro Systems Marc Balmer, CH-5073 Gipf-Oberfrick
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -1904,14 +1904,28 @@ static int
 tuple_copy(lua_State *L)
 {
 	tuple *t = luaL_checkudata(L, 1, TUPLE_METATABLE);
-	int col;
+	int col, rv = 0;
 
-	lua_newtable(L);
+	if (lua_gettop(L) > 1) {
+		if (!lua_istable(L, 2)) {
+			if (!lua_getmetatable(L, 2))
+				return luaL_error(L, "argument has no "
+				    "metatable");
+
+			if (lua_getfield(L, -1, "__newindex") == LUA_TNIL)
+				return luaL_error(L, "metatable has no "
+				    "__newindex metamethod");
+			lua_pop(L, 2);
+		}
+	} else {
+		lua_newtable(L);
+		rv = 1;
+	}
 	for (col = 0; col < PQnfields(t->res); col++) {
 		lua_pushstring(L, PQgetvalue(t->res, t->row, col));
 		lua_setfield(L, -2, PQfname(t->res, col));
 	}
-	return 1;
+	return rv;
 }
 
 static int
@@ -2080,7 +2094,6 @@ static struct constant pgsql_constant[] = {
 #if PG_VERSION_NUM >= 100000
 	{ "CONNECTION_CONSUME",		CONNECTION_CONSUME },
 #endif
-
 	/* Resultset status codes */
 	{ "PGRES_EMPTY_QUERY",		PGRES_EMPTY_QUERY },
 	{ "PGRES_COMMAND_OK",		PGRES_COMMAND_OK },
