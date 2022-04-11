@@ -34,7 +34,7 @@
 #define RES_METATABLE		"pgsql result"
 #define TUPLE_METATABLE		"pgsql tuple"
 #define FIELD_METATABLE		"pgsql tuple field"
-#define NOTIFY_METATABLE	"pgsql asychronous notification"
+#define NOTIFY_METATABLE	"pgsql asynchronous notification"
 #define GCMEM_METATABLE		"pgsql garbage collected memory"
 
 /* OIDs from server/pg_type.h */
