@@ -1904,6 +1904,17 @@ static int
 tuple_copy(lua_State *L)
 {
 	tuple *t = luaL_checkudata(L, 1, TUPLE_METATABLE);
+#if LUA_VERSION_NUM < 502
+	int col;
+
+	lua_newtable(L);
+
+	for (col = 0; col < PQnfields(t->res); col++) {
+		lua_pushstring(L, PQgetvalue(t->res, t->row, col));
+		lua_setfield(L, -2, PQfname(t->res, col));
+	}
+	return 1;
+#else
 	int col, rv = 0;
 
 	if (lua_gettop(L) > 1) {
@@ -1926,6 +1937,7 @@ tuple_copy(lua_State *L)
 		lua_setfield(L, -2, PQfname(t->res, col));
 	}
 	return rv;
+#endif
 }
 
 static int
