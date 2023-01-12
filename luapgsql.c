@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009 - 2022, Micro Systems Marc Balmer, CH-5073 Gipf-Oberfrick
+ * Copyright (c) 2009 - 2023, Micro Systems Marc Balmer, CH-5073 Gipf-Oberfrick
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -952,6 +952,46 @@ conn_cancel(lua_State *L)
 		lua_pushboolean(L, 0);
 	return res == 1 ? 1 : 2;
 }
+
+#if PG_VERSION_NUM >= 140000
+/*
+ * Pipeline mode
+ */
+static int
+conn_pipelineStatus(lua_State *L)
+{
+	lua_pushinteger(L, PQpipelineStatus(pgsql_conn(L, 1)));
+	return 1;
+}
+
+static int
+conn_enterPipelineMode(lua_State *L)
+{
+	lua_pushboolean(L, PQenterPipelineMode(pgsql_conn(L, 1)));
+	return 1;
+}
+
+static int
+conn_exitPipelineMode(lua_State *L)
+{
+	lua_pushboolean(L, PQexitPipelineMode(pgsql_conn(L, 1)));
+	return 1;
+}
+
+static int
+conn_pipelineSync(lua_State *L)
+{
+	lua_pushboolean(L, PQpipelineSync(pgsql_conn(L, 1)));
+	return 1;
+}
+
+static int
+conn_sendFlushRequest(lua_State *L)
+{
+	lua_pushboolean(L, PQsendFlushRequest(pgsql_conn(L, 1)));
+	return 1;
+}
+#endif
 
 #if PG_VERSION_NUM >= 90200
 static int
@@ -2147,6 +2187,13 @@ static struct constant pgsql_constant[] = {
 	{ "PQERRORS_DEFAULT",		PQERRORS_DEFAULT },
 	{ "PQERRORS_VERBOSE",		PQERRORS_VERBOSE },
 
+#if PG_VERSION_NUM >= 140000
+	/* Pipeline mode */
+	{ "PQ_PIPELINE_ON",		PQ_PIPELINE_ON },
+	{ "PQ_PIPELINE_OFF",		PQ_PIPELINE_OFF },
+	{ "PQ_PIPELINE_ABORTED",	PQ_PIPELINE_ABORTED },
+#endif
+
 #if PG_VERSION_NUM >= 90100
 	/* PQping codes */
 	{ "PQPING_OK",			PQPING_OK },
@@ -2172,14 +2219,14 @@ static void
 pgsql_set_info(lua_State *L)
 {
 	lua_pushliteral(L, "_COPYRIGHT");
-	lua_pushliteral(L, "Copyright (C) 2009 - 2021 by "
+	lua_pushliteral(L, "Copyright (C) 2009 - 2023 by "
 	    "micro systems marc balmer");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_DESCRIPTION");
 	lua_pushliteral(L, "PostgreSQL binding for Lua");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "pgsql 1.7.0");
+	lua_pushliteral(L, "pgsql 1.7.1");
 	lua_settable(L, -3);
 }
 
@@ -2256,6 +2303,15 @@ luaopen_pgsql(lua_State *L)
 		{ "sendDescribePortal", conn_sendDescribePortal },
 		{ "getResult", conn_getResult },
 		{ "cancel", conn_cancel },
+
+#if PG_VERSION_NUM >= 140000
+		/* Pipeline mode */
+		{ "pipelineStatus", conn_pipelineStatus },
+		{ "enterPipelineMode", conn_enterPipelineMode },
+		{ "exitPipelineMode", conn_exitPipelineMode },
+		{ "pipelineSync", conn_pipelineSync },
+		{ "sendFlushRequest", conn_sendFlushRequest },
+#endif
 
 #if PG_VERSION_NUM >= 90200
 		/* Retrieving query results row-by-row */
