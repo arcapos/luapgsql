@@ -19,4 +19,5 @@ clean:
 		rm -f *.o *.so
 install:
 	install -d ${DESTDIR}${LIBDIR}
+	install -d ${DESTDIR}${LUADIR}
 	install -m 755 ${LIB}.so ${DESTDIR}${LUADIR}/${LIB}.so
