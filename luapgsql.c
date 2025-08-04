@@ -61,6 +61,11 @@ luaL_setmetatable(lua_State *L, const char *tname)
 }
 #endif
 
+#if LUA_VERSION_NUM < 503
+#define lua_getfield(L, i, k) \
+	(lua_getfield((L), (i), (k)), lua_type((L), -1))
+#endif
+
 /*
  * Garbage collected memory
  */
@@ -1296,79 +1301,127 @@ conn_encryptPassword(lua_State *L)
 #endif
 
 /* Notice processing */
-static void
-noticeReceiver(void *arg, const PGresult *r)
-{
-	notice *n = arg;
+
+/* calls user function with connection and message */
+static int
+noticeReceiverHelper(lua_State *L) {
+	/* swap result pointer for actual object now we're in a protected call */
 	PGresult **res;
-
-	lua_rawgeti(n->L, LUA_REGISTRYINDEX, n->f);
-	res = lua_newuserdata(n->L, sizeof(PGresult *));
-
+	const PGresult *r = lua_topointer(L, 3);
+	lua_settop(L, 2);
+	res = lua_newuserdata(L, sizeof(PGresult *));
 	*res = (PGresult *)r;
-	luaL_setmetatable(n->L, RES_METATABLE);
+	/* TODO: need to mark this PGResult somehow to disallow PQClear */
+	luaL_setmetatable(L, RES_METATABLE);
 
-	if (lua_pcall(n->L, 1, 0, 0))
-		luaL_error(n->L, "%s", lua_tostring(n->L, -1));
+	lua_call(L, 2, 0);
 	*res = NULL;	/* avoid double free */
+	return 0;
 }
 
 static void
-noticeProcessor(void *arg, const char *message)
+noticeReceiver(void *arg, const PGresult *r)
 {
-	notice *n = arg;
+	lua_State *L = arg;
+	lua_pushvalue(L, 1); /* push helper function */
+	lua_pushvalue(L, 2); /* push user function */
+	lua_pushvalue(L, 3); /* push connection */
+	lua_pushlightuserdata(L, (void*)r);
 
-	lua_rawgeti(n->L, LUA_REGISTRYINDEX, n->f);
-	lua_pushstring(n->L, message);
-	if (lua_pcall(n->L, 1, 0, 0))
-		luaL_error(n->L, "%s", lua_tostring(n->L, -1));
+	if (LUA_OK != lua_pcall(L, 3, 0, 0)) {
+		/* ignore errors... we can't do anything with it */
+		lua_pop(L, 1); /* pop error message */
+	}
 }
 
 static int
 conn_setNoticeReceiver(lua_State *L)
 {
-	notice **n;
 	PGconn *conn;
-	int f;
+	lua_State *L1;
 
-	if (!lua_isfunction(L, -1))
-		return luaL_argerror(L, -1, "function expected");
-
-	f = luaL_ref(L, LUA_REGISTRYINDEX);
 	conn = pgsql_conn(L, 1);
+	luaL_checktype(L, 2, LUA_TFUNCTION);
 
-	n = gcmalloc(L, sizeof(notice *));
-	*n = malloc(sizeof(notice));
-	if (*n != NULL) {
-		(*n)->L = L;
-		(*n)->f = f;
-		PQsetNoticeReceiver(conn, noticeReceiver, *n);
-	} else
-		return luaL_error(L, "out of memory");
+	lua_getuservalue(L, 1);
+	if (LUA_TNIL == lua_getfield(L, -1, "noticeReceiverThread")) {
+		lua_pop(L, 1);
+		/* create new thread for callbacks */
+		L1 = lua_newthread(L);
+		lua_pushcfunction(L, noticeReceiverHelper);
+		lua_pushvalue(L, 2);
+		lua_pushvalue(L, 1);
+		lua_xmove(L, L1, 3); /* Move helper function, user function and connection */
+		lua_setfield(L, -2, "noticeReceiverThread");
+	} else {
+		/* reuse old thread */
+		L1 = lua_tothread(L, -1);
+		lua_pushvalue(L, 2);
+		lua_xmove(L, L1, 1); /* Move new user function */
+		lua_replace(L1, 2);
+	}
+
+	PQsetNoticeReceiver(conn, noticeReceiver, L1);
+
 	return 0;
+}
+
+/* calls user function with connection and message */
+static int
+noticeProcessorHelper(lua_State *L) {
+	/* swap message pointer for actual string now we're in a protected call */
+	const char *message = lua_topointer(L, 3);
+	lua_settop(L, 2);
+	lua_pushstring(L, message);
+
+	lua_call(L, 2, 0);
+	return 0;
+}
+
+static void
+noticeProcessor(void *arg, const char *message)
+{
+	lua_State *L = arg;
+	lua_pushvalue(L, 1); /* push helper function */
+	lua_pushvalue(L, 2); /* push user function */
+	lua_pushvalue(L, 3); /* push connection */
+	lua_pushlightuserdata(L, (void*)message);
+
+	if (LUA_OK != lua_pcall(L, 3, 0, 0)) {
+		/* ignore errors... we can't do anything with it */
+		lua_pop(L, 1); /* pop error message */
+	}
 }
 
 static int
 conn_setNoticeProcessor(lua_State *L)
 {
-	notice **n;
 	PGconn *conn;
-	int f;
+	lua_State *L1;
 
-	if (!lua_isfunction(L, -1))
-		return luaL_argerror(L, -1, "function expected");
-
-	f = luaL_ref(L, LUA_REGISTRYINDEX);
 	conn = pgsql_conn(L, 1);
+	luaL_checktype(L, 2, LUA_TFUNCTION);
 
-	n = gcmalloc(L, sizeof(notice *));
-	*n = malloc(sizeof(notice));
-	if (*n != NULL) {
-		(*n)->L = L;
-		(*n)->f = f;
-		PQsetNoticeProcessor(conn, noticeProcessor, *n);
-	} else
-		return luaL_error(L, "out of memory");
+	lua_getuservalue(L, 1);
+	if (LUA_TNIL == lua_getfield(L, -1, "noticeProcessorThread")) {
+		lua_pop(L, 1);
+		/* create new thread for callbacks */
+		L1 = lua_newthread(L);
+		lua_pushcfunction(L, noticeProcessorHelper);
+		lua_pushvalue(L, 2);
+		lua_pushvalue(L, 1);
+		lua_xmove(L, L1, 3); /* Move helper function, user function and connection */
+		lua_setfield(L, -2, "noticeProcessorThread");
+	} else {
+		/* reuse old thread */
+		L1 = lua_tothread(L, -1);
+		lua_pushvalue(L, 2);
+		lua_xmove(L, L1, 1); /* Move new user function */
+		lua_replace(L1, 2);
+	}
+
+	PQsetNoticeProcessor(conn, noticeProcessor, L1);
+
 	return 0;
 }
 
