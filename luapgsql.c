@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009 - 2023, Micro Systems Marc Balmer, CH-5073 Gipf-Oberfrick
+ * Copyright (c) 2009 - 2026, Micro Systems Marc Balmer, CH-5073 Gipf-Oberfrick
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -465,8 +465,12 @@ conn_exec(lua_State *L)
 	*res = PQexec(conn, command);
 	if (*res == NULL)
 		lua_pushnil(L);
-	else
+	else {
 		luaL_setmetatable(L, RES_METATABLE);
+#if LUA_VERSION_NUM >= 504
+		lua_toclose(L, -1);
+#endif
+	}
 	return 1;
 }
 
@@ -588,8 +592,12 @@ conn_execParams(lua_State *L)
 	    (const char * const*)paramValues, paramLengths, paramFormats, 0);
 	if (*res == NULL)
 		lua_pushnil(L);
-	else
+	else {
 		luaL_setmetatable(L, RES_METATABLE);
+#if LUA_VERSION_NUM >= 504
+		lua_toclose(L, -1);
+#endif
+	}
 	return 1;
 }
 
@@ -623,8 +631,12 @@ conn_prepare(lua_State *L)
 	*res = PQprepare(conn, command, name, nParams, paramTypes);
 	if (*res == NULL)
 		lua_pushnil(L);
-	else
+	else {
 		luaL_setmetatable(L, RES_METATABLE);
+#if LUA_VERSION_NUM >= 504
+		lua_toclose(L, -1);
+#endif
+	}
 	return 1;
 }
 
@@ -667,8 +679,12 @@ conn_execPrepared(lua_State *L)
 	    (const char * const*)paramValues, paramLengths, paramFormats, 0);
 	if (*res == NULL)
 		lua_pushnil(L);
-	else
+	else {
 		luaL_setmetatable(L, RES_METATABLE);
+#if LUA_VERSION_NUM >= 504
+		lua_toclose(L, -1);
+#endif
+	}
 	return 1;
 }
 
@@ -686,8 +702,12 @@ conn_describePrepared(lua_State *L)
 	*res = PQdescribePrepared(conn, name);
 	if (*res == NULL)
 		lua_pushnil(L);
-	else
+	else {
 		luaL_setmetatable(L, RES_METATABLE);
+#if LUA_VERSION_NUM >= 504
+		lua_toclose(L, -1);
+#endif
+	}
 	return 1;
 }
 
@@ -705,8 +725,12 @@ conn_describePortal(lua_State *L)
 	*res = PQdescribePortal(conn, name);
 	if (*res == NULL)
 		lua_pushnil(L);
-	else
+	else {
 		luaL_setmetatable(L, RES_METATABLE);
+#if LUA_VERSION_NUM >= 504
+		lua_toclose(L, -1);
+#endif
+	}
 	return 1;
 }
 
@@ -926,6 +950,9 @@ conn_getResult(lua_State *L)
 		res = lua_newuserdata(L, sizeof(PGresult *));
 		*res = r;
 		luaL_setmetatable(L, RES_METATABLE);
+#if LUA_VERSION_NUM >= 504
+		lua_toclose(L, -1);
+#endif
 	}
 	return 1;
 }
@@ -2215,21 +2242,6 @@ static struct constant pgsql_constant[] = {
 	{ NULL,				0 }
 };
 
-static void
-pgsql_set_info(lua_State *L)
-{
-	lua_pushliteral(L, "_COPYRIGHT");
-	lua_pushliteral(L, "Copyright (C) 2009 - 2023 by "
-	    "micro systems marc balmer");
-	lua_settable(L, -3);
-	lua_pushliteral(L, "_DESCRIPTION");
-	lua_pushliteral(L, "PostgreSQL binding for Lua");
-	lua_settable(L, -3);
-	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "pgsql 1.7.1");
-	lua_settable(L, -3);
-}
-
 int
 luaopen_pgsql(lua_State *L)
 {
@@ -2519,7 +2531,18 @@ luaopen_pgsql(lua_State *L)
 #else
 	luaL_register(L, "pgsql", luapgsql);
 #endif
-	pgsql_set_info(L);
+
+	lua_pushliteral(L, "_COPYRIGHT");
+	lua_pushliteral(L, "Copyright (C) 2009 - 2026 by "
+	    "micro systems marc balmer");
+	lua_settable(L, -3);
+	lua_pushliteral(L, "_DESCRIPTION");
+	lua_pushliteral(L, "PostgreSQL binding for Lua");
+	lua_settable(L, -3);
+	lua_pushliteral(L, "_VERSION");
+	lua_pushliteral(L, "pgsql 1.8.0");
+	lua_settable(L, -3);
+
 	for (n = 0; pgsql_constant[n].name != NULL; n++) {
 		lua_pushinteger(L, pgsql_constant[n].value);
 		lua_setfield(L, -2, pgsql_constant[n].name);
