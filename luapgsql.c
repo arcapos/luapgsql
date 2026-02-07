@@ -49,18 +49,6 @@
 
 #include "luapgsql.h"
 
-#if LUA_VERSION_NUM < 502
-#define lua_setuservalue lua_setfenv
-#define lua_getuservalue lua_getfenv
-
-static void
-luaL_setmetatable(lua_State *L, const char *tname)
-{
-	luaL_getmetatable(L, tname);
-	lua_setmetatable(L, -2);
-}
-#endif
-
 /*
  * Garbage collected memory
  */
@@ -467,9 +455,7 @@ conn_exec(lua_State *L)
 		lua_pushnil(L);
 	else {
 		luaL_setmetatable(L, RES_METATABLE);
-#if LUA_VERSION_NUM >= 504
 		lua_toclose(L, -1);
-#endif
 	}
 	return 1;
 }
@@ -492,11 +478,9 @@ get_param(lua_State *L, int t, int n, Oid *paramTypes, char **paramValues,
 		break;
 	case LUA_TNUMBER:
 		if (paramTypes != NULL) {
-#if LUA_VERSION_NUM >= 503
 			if (lua_isinteger(L, t))
 				paramTypes[n] = INT8OID;
 			else
-#endif
 				paramTypes[n] = FLOAT8OID;
 		}
 		if (paramValues != NULL) {
@@ -505,11 +489,9 @@ get_param(lua_State *L, int t, int n, Oid *paramTypes, char **paramValues,
 				uint64_t i;
 			} swap;
 
-#if LUA_VERSION_NUM >= 503
 			if (lua_isinteger(L, t))
 				swap.i = lua_tointeger(L, t);
 			else
-#endif
 				swap.v = lua_tonumber(L, t);
 			paramValues[n] = lua_newuserdata(L, sizeof(uint64_t));
 			*(uint64_t *)paramValues[n] = htobe64(swap.i);
@@ -594,9 +576,7 @@ conn_execParams(lua_State *L)
 		lua_pushnil(L);
 	else {
 		luaL_setmetatable(L, RES_METATABLE);
-#if LUA_VERSION_NUM >= 504
 		lua_toclose(L, -1);
-#endif
 	}
 	return 1;
 }
@@ -633,9 +613,7 @@ conn_prepare(lua_State *L)
 		lua_pushnil(L);
 	else {
 		luaL_setmetatable(L, RES_METATABLE);
-#if LUA_VERSION_NUM >= 504
 		lua_toclose(L, -1);
-#endif
 	}
 	return 1;
 }
@@ -681,9 +659,7 @@ conn_execPrepared(lua_State *L)
 		lua_pushnil(L);
 	else {
 		luaL_setmetatable(L, RES_METATABLE);
-#if LUA_VERSION_NUM >= 504
 		lua_toclose(L, -1);
-#endif
 	}
 	return 1;
 }
@@ -704,9 +680,7 @@ conn_describePrepared(lua_State *L)
 		lua_pushnil(L);
 	else {
 		luaL_setmetatable(L, RES_METATABLE);
-#if LUA_VERSION_NUM >= 504
 		lua_toclose(L, -1);
-#endif
 	}
 	return 1;
 }
@@ -727,9 +701,7 @@ conn_describePortal(lua_State *L)
 		lua_pushnil(L);
 	else {
 		luaL_setmetatable(L, RES_METATABLE);
-#if LUA_VERSION_NUM >= 504
 		lua_toclose(L, -1);
-#endif
 	}
 	return 1;
 }
@@ -950,9 +922,7 @@ conn_getResult(lua_State *L)
 		res = lua_newuserdata(L, sizeof(PGresult *));
 		*res = r;
 		luaL_setmetatable(L, RES_METATABLE);
-#if LUA_VERSION_NUM >= 504
 		lua_toclose(L, -1);
-#endif
 	}
 	return 1;
 }
@@ -1149,11 +1119,8 @@ closef_untrace(lua_State *L)
 	lua_getfield(L, -1, "PGconn");
 	conn = pgsql_conn(L, -1);
 	lua_getfield(L, -2, "old_uservalue");
-#if LUA_VERSION_NUM >= 502
 	lua_getfield(L, -3, "old_closef");
-#else
-	lua_getfield(L, -1, "__close");
-#endif
+
 	cf = lua_tocfunction(L, -1);
 	lua_pop(L, 1);
 	lua_setuservalue(L, 1);
@@ -1176,7 +1143,6 @@ static int
 conn_trace(lua_State *L)
 {
 	PGconn *conn;
-#if LUA_VERSION_NUM >= 502
 	luaL_Stream *stream;
 
 	conn = pgsql_conn(L, 1);
@@ -1206,36 +1172,6 @@ conn_trace(lua_State *L)
 	stream->closef = closef_untrace;
 
 	PQtrace(conn, stream->f);
-#else
-	FILE **fp;
-
-	conn = pgsql_conn(L, 1);
-	fp = luaL_checkudata(L, 2, LUA_FILEHANDLE);
-	luaL_argcheck(L, *fp != NULL, 2, "invalid file handle");
-
-	/*
-	 * Keep a reference to the file object in uservalue of connection
-	 * so it doesn't get garbage collected.
-	 */
-	lua_getuservalue(L, 1);
-	lua_pushvalue(L, 2);
-	lua_setfield(L, -2, "trace_file");
-
-	/*
-	 * Swap __close field in file environment for our wrapper that will
-	 * untrace keep the old closef under the key of the PGconn.
-	 */
-	lua_createtable(L, 0, 3);
-	lua_pushcfunction(L, closef_untrace);
-	lua_setfield(L, -2, "__close");
-	lua_getuservalue(L, 2);
-	lua_setfield(L, -2, "old_uservalue");
-	lua_pushvalue(L, 1);
-	lua_setfield(L, -2, "PGconn");
-	lua_setuservalue(L, 2);
-
-	PQtrace(conn, *fp);
-#endif
 	return 0;
 }
 
@@ -2423,11 +2359,7 @@ luaopen_pgsql(lua_State *L)
 		{ NULL, NULL }
 	};
 	if (luaL_newmetatable(L, CONN_METATABLE)) {
-#if LUA_VERSION_NUM >= 502
 		luaL_setfuncs(L, conn_methods, 0);
-#else
-		luaL_register(L, NULL, conn_methods);
-#endif
 		lua_pushliteral(L, "__gc");
 		lua_pushcfunction(L, conn_finish);
 		lua_settable(L, -3);
@@ -2443,20 +2375,15 @@ luaopen_pgsql(lua_State *L)
 	lua_pop(L, 1);
 
 	if (luaL_newmetatable(L, RES_METATABLE)) {
-#if LUA_VERSION_NUM >= 502
 		luaL_setfuncs(L, res_methods, 0);
-#else
-		luaL_register(L, NULL, res_methods);
-#endif
 		lua_pushliteral(L, "__gc");
 		lua_pushcfunction(L, res_clear);
 		lua_settable(L, -3);
 
-#if LUA_VERSION_NUM >= 504
 		lua_pushliteral(L, "__close");
 		lua_pushcfunction(L, res_clear);
 		lua_settable(L, -3);
-#endif
+
 		lua_pushliteral(L, "__index");
 		lua_pushcfunction(L, res_index);
 		lua_settable(L, -3);
@@ -2472,20 +2399,14 @@ luaopen_pgsql(lua_State *L)
 	lua_pop(L, 1);
 
 	if (luaL_newmetatable(L, NOTIFY_METATABLE)) {
-#if LUA_VERSION_NUM >= 502
 		luaL_setfuncs(L, notify_methods, 0);
-#else
-		luaL_register(L, NULL, notify_methods);
-#endif
 		lua_pushliteral(L, "__gc");
 		lua_pushcfunction(L, notify_clear);
 		lua_settable(L, -3);
 
-#if LUA_VERSION_NUM >= 504
 		lua_pushliteral(L, "__close");
 		lua_pushcfunction(L, notify_clear);
 		lua_settable(L, -3);
-#endif
 
 		lua_pushliteral(L, "__index");
 		lua_pushvalue(L, -2);
@@ -2526,11 +2447,7 @@ luaopen_pgsql(lua_State *L)
 	}
 	lua_pop(L, 1);
 
-#if LUA_VERSION_NUM >= 502
 	luaL_newlib(L, luapgsql);
-#else
-	luaL_register(L, "pgsql", luapgsql);
-#endif
 
 	lua_pushliteral(L, "_COPYRIGHT");
 	lua_pushliteral(L, "Copyright (C) 2009 - 2026 by "
@@ -2547,6 +2464,5 @@ luaopen_pgsql(lua_State *L)
 		lua_pushinteger(L, pgsql_constant[n].value);
 		lua_setfield(L, -2, pgsql_constant[n].name);
 	};
-
 	return 1;
 }
