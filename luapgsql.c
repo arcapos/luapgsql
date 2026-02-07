@@ -453,10 +453,8 @@ conn_exec(lua_State *L)
 	*res = PQexec(conn, command);
 	if (*res == NULL)
 		lua_pushnil(L);
-	else {
+	else
 		luaL_setmetatable(L, RES_METATABLE);
-		lua_toclose(L, -1);
-	}
 	return 1;
 }
 
@@ -574,10 +572,8 @@ conn_execParams(lua_State *L)
 	    (const char * const*)paramValues, paramLengths, paramFormats, 0);
 	if (*res == NULL)
 		lua_pushnil(L);
-	else {
+	else
 		luaL_setmetatable(L, RES_METATABLE);
-		lua_toclose(L, -1);
-	}
 	return 1;
 }
 
@@ -611,10 +607,8 @@ conn_prepare(lua_State *L)
 	*res = PQprepare(conn, command, name, nParams, paramTypes);
 	if (*res == NULL)
 		lua_pushnil(L);
-	else {
+	else
 		luaL_setmetatable(L, RES_METATABLE);
-		lua_toclose(L, -1);
-	}
 	return 1;
 }
 
@@ -657,10 +651,8 @@ conn_execPrepared(lua_State *L)
 	    (const char * const*)paramValues, paramLengths, paramFormats, 0);
 	if (*res == NULL)
 		lua_pushnil(L);
-	else {
+	else
 		luaL_setmetatable(L, RES_METATABLE);
-		lua_toclose(L, -1);
-	}
 	return 1;
 }
 
@@ -678,10 +670,8 @@ conn_describePrepared(lua_State *L)
 	*res = PQdescribePrepared(conn, name);
 	if (*res == NULL)
 		lua_pushnil(L);
-	else {
+	else
 		luaL_setmetatable(L, RES_METATABLE);
-		lua_toclose(L, -1);
-	}
 	return 1;
 }
 
@@ -699,10 +689,8 @@ conn_describePortal(lua_State *L)
 	*res = PQdescribePortal(conn, name);
 	if (*res == NULL)
 		lua_pushnil(L);
-	else {
+	else
 		luaL_setmetatable(L, RES_METATABLE);
-		lua_toclose(L, -1);
-	}
 	return 1;
 }
 
@@ -922,7 +910,6 @@ conn_getResult(lua_State *L)
 		res = lua_newuserdata(L, sizeof(PGresult *));
 		*res = r;
 		luaL_setmetatable(L, RES_METATABLE);
-		lua_toclose(L, -1);
 	}
 	return 1;
 }
